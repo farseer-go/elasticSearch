@@ -63,7 +63,7 @@ func (esQuery *esQuery) AggregationTerms(index string, name string, field string
 		return nil, nil
 	}
 	bucketKeys := make([]string, len(ret.Buckets))
-	for i, _ := range ret.Buckets {
+	for i := range ret.Buckets {
 		bucketKeys[i] = ret.Buckets[i].Key.(string)
 	}
 	return bucketKeys, nil
@@ -85,7 +85,7 @@ func (esQuery *esQuery) AggregationTermsWithSubAgg(index string, name1 string, f
 		return nil, nil
 	}
 	fieldsMap := make(map[string][]interface{})
-	for i, _ := range ret.Buckets {
+	for i := range ret.Buckets {
 		k := ret.Buckets[i].Key.(string)
 		// subAggregation
 		agg = elastic.NewTermsAggregation().Field(field2).Size(10000)
@@ -99,7 +99,7 @@ func (esQuery *esQuery) AggregationTermsWithSubAgg(index string, name1 string, f
 			return nil, err
 		}
 		ret2, _ := resp.Aggregations.Terms(name2)
-		for j, _ := range ret2.Buckets {
+		for j := range ret2.Buckets {
 			fieldsMap[k] = append(fieldsMap[k], ret2.Buckets[j].Key.(interface{}))
 		}
 	}
