@@ -47,11 +47,8 @@ func (indexSet *IndexSet[Table]) data() *elastic.Client {
 }
 
 // Select 筛选字段
-func (indexSet *IndexSet[Table]) Select(field string, value interface{}) *IndexSet[Table] {
-	termQuery := elastic.NewTermQuery(field, value)
-	boolQuery := elastic.NewBoolQuery().Must()
-	boolQuery.Must(termQuery)
-	indexSet.data().Search(indexSet.indexName).Query(boolQuery)
+func (indexSet *IndexSet[Table]) Select(fields ...string) *IndexSet[Table] {
+	indexSet.data().Search(indexSet.indexName).DocvalueFields(fields...)
 	return indexSet
 }
 
@@ -68,7 +65,7 @@ func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
 }
 
 // Insert 插入数据
-func (indexSet *IndexSet[Table]) Insert(po *Table) (bool, error) {
+func (indexSet *IndexSet[Table]) Insert(po Table) (bool, error) {
 	var putResp *elastic.PutMappingResponse
 	var err error
 	poMap := make(map[string]interface{})
