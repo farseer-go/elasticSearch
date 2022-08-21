@@ -1,6 +1,8 @@
 package elasticSearch
 
 import (
+	"encoding/json"
+	"github.com/farseer-go/collections"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 )
@@ -25,7 +27,7 @@ func (indexSet *IndexSet[Table]) SetIndexName(indexName string) {
 	if indexSet.es == nil {
 		return
 	}
-	indexSet.es.Index().Index(indexSet.indexName)
+	indexSet.es.Search().Index(indexSet.indexName)
 }
 
 // GetIndexName 获取索引名称
@@ -48,19 +50,19 @@ func (indexSet *IndexSet[Table]) data() *elastic.Client {
 
 // Select 筛选字段
 func (indexSet *IndexSet[Table]) Select(fields ...string) *IndexSet[Table] {
-	indexSet.data().Search(indexSet.indexName).DocvalueFields(fields...)
+	indexSet.data().Search().Index(indexSet.indexName).DocvalueFields(fields...)
 	return indexSet
 }
 
 // Asc 正序排序
 func (indexSet *IndexSet[Table]) Asc(field string) *IndexSet[Table] {
-	indexSet.data().Search(indexSet.indexName).Sort(field, true)
+	indexSet.data().Search().Index(indexSet.indexName).Sort(field, true)
 	return indexSet
 }
 
 // Desc 倒序排序
 func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
-	indexSet.data().Search(indexSet.indexName).Sort(field, false)
+	indexSet.data().Search().Index(indexSet.indexName).Sort(field, false)
 	return indexSet
 }
 
@@ -88,6 +90,17 @@ func (indexSet *IndexSet[Table]) Insert(po Table) (bool, error) {
 }
 
 // ToList 转换List集合
-func (indexSex *IndexSet[Table]) ToList() {
-
+func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
+	resp, _ := indexSet.data().Search().Index(indexSet.indexName).TrackTotalHits(true).Do(ctx)
+	hitArray := resp.Hits.Hits
+	var lst []Table
+	for _, hit := range hitArray {
+		var entity Table
+		poMap := hit.Fields
+		marshal, _ := json.Marshal(poMap)
+		_ = json.Unmarshal(marshal, &entity)
+		//添加元素
+		lst = append(lst, entity)
+	}
+	return collections.NewList[Table](lst...)
 }

@@ -3,11 +3,14 @@ module github.com/farseer-go/elasticSearch
 go 1.19
 
 require (
+	github.com/farseer-go/collections v0.0.0-20220820163327-cf129548e537
 	github.com/farseer-go/fs v0.0.0-20220807091751-56d67e061446
+	github.com/farseer-go/linq v0.0.0-20220819075019-10e51ab37e0c
 	github.com/olivere/elastic/v7 v7.0.32
 )
 
 require (
+	github.com/devfeel/mapper v0.7.10 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -27,5 +30,5 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
