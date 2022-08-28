@@ -61,8 +61,6 @@ github.com/farseer-go/collections v0.0.0-20220820163327-cf129548e537 h1:zhIUXjxg
 github.com/farseer-go/collections v0.0.0-20220820163327-cf129548e537/go.mod h1:LC5Z+NpjuWND/73Xm5iDJZPaukj1vVLxJbOPJgAawg4=
 github.com/farseer-go/fs v0.0.0-20220807091751-56d67e061446 h1:b0NgnCqBYmBPoxwDCdP0u5wVWgqMy39ZD7LTc3mQc5Y=
 github.com/farseer-go/fs v0.0.0-20220807091751-56d67e061446/go.mod h1:mg9BZsc2+UIICdjohXH6Ne5rpIZgwqDBetLlpGAnID4=
-github.com/farseer-go/linq v0.0.0-20220819075019-10e51ab37e0c h1:gr0dKEoVdrVyRlYvcb929YBkcNpCLm9MnvFEYojOShY=
-github.com/farseer-go/linq v0.0.0-20220819075019-10e51ab37e0c/go.mod h1:zR6/H533oLkMsZvOsyb7oemrUUGs0bhZJ4xE/aWEVqU=
 github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8vw=
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
 github.com/fsnotify/fsnotify v1.5.4 h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=

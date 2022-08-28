@@ -104,3 +104,23 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	}
 	return collections.NewList[Table](lst...)
 }
+
+// ToPageList 转成分页集合
+func (indexSet *IndexSet[Table]) ToPageList(jobField string, jobName string, field string, fieldValue string, pageSize int, pageIndex int) collections.List[Table] {
+	boolQuery := elastic.NewBoolQuery().Must()
+	termQuery := elastic.NewTermQuery(field, fieldValue)
+	matchQuery := elastic.NewMatchQuery(jobField, jobName)
+	boolQuery.Must(termQuery, matchQuery)
+	resp, _ := indexSet.data().Search().Index(indexSet.indexName).Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	hitArray := resp.Hits.Hits
+	var lst []Table
+	for _, hit := range hitArray {
+		var entity Table
+		poMap := hit.Fields
+		marshal, _ := json.Marshal(poMap)
+		_ = json.Unmarshal(marshal, &entity)
+		//添加元素
+		lst = append(lst, entity)
+	}
+	return collections.NewList[Table](lst...)
+}
