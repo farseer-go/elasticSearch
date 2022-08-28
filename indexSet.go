@@ -66,6 +66,13 @@ func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
 	return indexSet
 }
 
+// Where 倒序排序
+func (indexSet *IndexSet[Table]) Where(field string, fieldValue string) *IndexSet[Table] {
+	termQuery := elastic.NewTermQuery(field, fieldValue)
+	indexSet.data().Search().Index(indexSet.indexName).Query(termQuery)
+	return indexSet
+}
+
 // Insert 插入数据
 func (indexSet *IndexSet[Table]) Insert(po Table) (bool, error) {
 	var putResp *elastic.PutMappingResponse
@@ -106,12 +113,8 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 }
 
 // ToPageList 转成分页集合
-func (indexSet *IndexSet[Table]) ToPageList(jobField string, jobName string, field string, fieldValue string, pageSize int, pageIndex int) collections.List[Table] {
-	boolQuery := elastic.NewBoolQuery().Must()
-	termQuery := elastic.NewTermQuery(field, fieldValue)
-	matchQuery := elastic.NewMatchQuery(jobField, jobName)
-	boolQuery.Must(termQuery, matchQuery)
-	resp, _ := indexSet.data().Search().Index(indexSet.indexName).Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.List[Table] {
+	resp, _ := indexSet.data().Search().Index(indexSet.indexName).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
