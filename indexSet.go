@@ -96,6 +96,57 @@ func (indexSet *IndexSet[Table]) Insert(po Table) (bool, error) {
 	return false, err
 }
 
+// InsertArray 数组的形式插入
+func (indexSet *IndexSet[Table]) InsertArray(array []Table) (bool, error) {
+	var putResp *elastic.PutMappingResponse
+	var err error
+	poMap := make(map[string]interface{})
+	for _, table := range array {
+		typeOfPo := reflect.TypeOf(table)
+		valueOfPo := reflect.ValueOf(table)
+		// 通过 #NumField 获取结构体字段的数量
+		for i := 0; i < typeOfPo.NumField(); i++ {
+			key := typeOfPo.Field(i).Name
+			value := valueOfPo.Field(i)
+			poMap[key] = value
+		}
+	}
+	putResp, err = indexSet.es.PutMapping().Index(indexSet.indexName).IgnoreUnavailable(true).BodyJson(poMap).Do(ctx)
+	if err != nil {
+		return false, err
+	}
+	if putResp.Acknowledged {
+		return true, err
+	}
+	return false, err
+}
+
+// InsertList 插入列表形式
+func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) (bool, error) {
+	var putResp *elastic.PutMappingResponse
+	var err error
+	poMap := make(map[string]interface{})
+	for i := 0; i < list.Count(); i++ {
+		table := list.Index(i)
+		typeOfPo := reflect.TypeOf(table)
+		valueOfPo := reflect.ValueOf(table)
+		// 通过 #NumField 获取结构体字段的数量
+		for i := 0; i < typeOfPo.NumField(); i++ {
+			key := typeOfPo.Field(i).Name
+			value := valueOfPo.Field(i)
+			poMap[key] = value
+		}
+	}
+	putResp, err = indexSet.es.PutMapping().Index(indexSet.indexName).IgnoreUnavailable(true).BodyJson(poMap).Do(ctx)
+	if err != nil {
+		return false, err
+	}
+	if putResp.Acknowledged {
+		return true, err
+	}
+	return false, err
+}
+
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	resp, _ := indexSet.data().Search().Index(indexSet.indexName).TrackTotalHits(true).Do(ctx)
