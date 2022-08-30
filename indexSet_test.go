@@ -1,7 +1,6 @@
 package elasticSearch
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -23,7 +22,7 @@ func TestInit(t *testing.T) {
 	for i := 0; i < typeOfPo.NumField(); i++ {
 		key := typeOfPo.Field(i).Name
 		value := valueOfPo.Field(i)
-		fmt.Println("key :", key, " value: ", value)
+		flog.Info("key :", key, " value: ", value)
 	}
 
 }
