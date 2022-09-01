@@ -5,6 +5,8 @@ import (
 	"github.com/farseer-go/collections"
 	"github.com/olivere/elastic/v7"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 // IndexSet 表操作
@@ -12,6 +14,7 @@ type IndexSet[Table any] struct {
 	esContext *ESContext
 	indexName string
 	es        *elastic.Client
+	esService *elastic.SearchService
 	err       error
 }
 
@@ -24,10 +27,7 @@ func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string) {
 // SetIndexName 设置索引名称
 func (indexSet *IndexSet[Table]) SetIndexName(indexName string) {
 	indexSet.indexName = indexName
-	if indexSet.es == nil {
-		return
-	}
-	indexSet.es.Search().Index(indexSet.indexName)
+	indexSet.data().CreateIndex(indexName).Do(ctx)
 }
 
 // GetIndexName 获取索引名称
@@ -45,118 +45,117 @@ func (indexSet *IndexSet[Table]) data() *elastic.Client {
 		)
 		indexSet.es = es
 	}
+	//连接服务测试
+	_, _, err := indexSet.es.Ping(indexSet.esContext.esConfig.Server).Do(ctx)
+	if err != nil {
+		panic(err)
+	}
 	return indexSet.es
 }
 
 // Select 筛选字段
 func (indexSet *IndexSet[Table]) Select(fields ...string) *IndexSet[Table] {
-	indexSet.data().Search().Index(indexSet.indexName).DocvalueFields(fields...)
+	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).DocvalueFields(fields...)
 	return indexSet
 }
 
 // Asc 正序排序
 func (indexSet *IndexSet[Table]) Asc(field string) *IndexSet[Table] {
-	indexSet.data().Search().Index(indexSet.indexName).Sort(field, true)
+	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Sort(field, true)
 	return indexSet
 }
 
 // Desc 倒序排序
 func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
-	indexSet.data().Search().Index(indexSet.indexName).Sort(field, false)
+	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Sort(field, false)
 	return indexSet
+}
+
+// Del 删除指定Id数据
+func (indexSet *IndexSet[Table]) Del(id string) error {
+	_, err := indexSet.data().Delete().Index(indexSet.indexName).Id(id).Do(ctx)
+	return err
 }
 
 // Where 倒序排序
 func (indexSet *IndexSet[Table]) Where(field string, fieldValue string) *IndexSet[Table] {
 	termQuery := elastic.NewTermQuery(field, fieldValue)
-	indexSet.data().Search().Index(indexSet.indexName).Query(termQuery)
+	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Query(termQuery)
 	return indexSet
 }
 
 // Insert 插入数据
-func (indexSet *IndexSet[Table]) Insert(po Table) (bool, error) {
-	var putResp *elastic.PutMappingResponse
+func (indexSet *IndexSet[Table]) Insert(po Table) error {
 	var err error
-	poMap := make(map[string]interface{})
-	typeOfPo := reflect.TypeOf(po)
-	valueOfPo := reflect.ValueOf(po)
-	// 通过 #NumField 获取结构体字段的数量
-	for i := 0; i < typeOfPo.NumField(); i++ {
-		key := typeOfPo.Field(i).Name
-		value := valueOfPo.Field(i)
-		poMap[key] = value
+	poValueOf := reflect.ValueOf(po)
+	Id := "0"
+	for i := 0; i < poValueOf.NumField(); i++ {
+		data := poValueOf.Type().Field(i).Tag.Get("gorm")
+		if strings.HasPrefix(data, "primaryKey") {
+			val := poValueOf.Field(i).Int()
+			Id = strconv.FormatInt(val, 10)
+			break
+		}
 	}
-	putResp, err = indexSet.es.PutMapping().Index(indexSet.indexName).IgnoreUnavailable(true).BodyJson(poMap).Do(ctx)
-	if err != nil {
-		return false, err
-	}
-	if putResp.Acknowledged {
-		return true, err
-	}
-	return false, err
+	_, err = indexSet.data().Index().Index(indexSet.indexName).Id(Id).BodyJson(po).Do(ctx)
+	return err
 }
 
 // InsertArray 数组的形式插入
-func (indexSet *IndexSet[Table]) InsertArray(array []Table) (bool, error) {
-	var putResp *elastic.PutMappingResponse
+func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 	var err error
-	poMap := make(map[string]interface{})
 	for _, table := range array {
-		typeOfPo := reflect.TypeOf(table)
-		valueOfPo := reflect.ValueOf(table)
-		// 通过 #NumField 获取结构体字段的数量
-		for i := 0; i < typeOfPo.NumField(); i++ {
-			key := typeOfPo.Field(i).Name
-			value := valueOfPo.Field(i)
-			poMap[key] = value
+		poValueOf := reflect.ValueOf(table)
+		Id := "0"
+		for i := 0; i < poValueOf.NumField(); i++ {
+			data := poValueOf.Type().Field(i).Tag.Get("gorm")
+			if strings.HasPrefix(data, "primaryKey") {
+				val := poValueOf.Field(i).Int()
+				Id = strconv.FormatInt(val, 10)
+				break
+			}
+		}
+		_, err = indexSet.data().Index().Index(indexSet.indexName).Id(Id).BodyJson(table).Do(ctx)
+		if err != nil {
+			return err
 		}
 	}
-	putResp, err = indexSet.es.PutMapping().Index(indexSet.indexName).IgnoreUnavailable(true).BodyJson(poMap).Do(ctx)
-	if err != nil {
-		return false, err
-	}
-	if putResp.Acknowledged {
-		return true, err
-	}
-	return false, err
+	return nil
 }
 
 // InsertList 插入列表形式
-func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) (bool, error) {
-	var putResp *elastic.PutMappingResponse
+func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error {
 	var err error
-	poMap := make(map[string]interface{})
 	for i := 0; i < list.Count(); i++ {
-		table := list.Index(i)
-		typeOfPo := reflect.TypeOf(table)
-		valueOfPo := reflect.ValueOf(table)
-		// 通过 #NumField 获取结构体字段的数量
-		for i := 0; i < typeOfPo.NumField(); i++ {
-			key := typeOfPo.Field(i).Name
-			value := valueOfPo.Field(i)
-			poMap[key] = value
+		poValueOf := reflect.ValueOf(list.Index(i))
+		Id := "0"
+		for i := 0; i < poValueOf.NumField(); i++ {
+			data := poValueOf.Type().Field(i).Tag.Get("gorm")
+			if strings.HasPrefix(data, "primaryKey") {
+				val := poValueOf.Field(i).Int()
+				Id = strconv.FormatInt(val, 10)
+				break
+			}
+		}
+		_, err = indexSet.data().Index().Index(indexSet.indexName).Id(Id).BodyJson(list.Index(i)).Do(ctx)
+		if err != nil {
+			return err
 		}
 	}
-	putResp, err = indexSet.es.PutMapping().Index(indexSet.indexName).IgnoreUnavailable(true).BodyJson(poMap).Do(ctx)
-	if err != nil {
-		return false, err
-	}
-	if putResp.Acknowledged {
-		return true, err
-	}
-	return false, err
+	return nil
 }
 
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
-	resp, _ := indexSet.data().Search().Index(indexSet.indexName).TrackTotalHits(true).Do(ctx)
+	if indexSet.esService == nil {
+		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
+	}
+	resp, _ := indexSet.esService.TrackTotalHits(true).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
 		var entity Table
-		poMap := hit.Fields
-		marshal, _ := json.Marshal(poMap)
-		_ = json.Unmarshal(marshal, &entity)
+		_ = json.Unmarshal(hit.Source, &entity)
 		//添加元素
 		lst = append(lst, entity)
 	}
@@ -165,14 +164,15 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 
 // ToPageList 转成分页集合
 func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.List[Table] {
-	resp, _ := indexSet.data().Search().Index(indexSet.indexName).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	if indexSet.esService == nil {
+		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
+	}
+	resp, _ := indexSet.esService.From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
 		var entity Table
-		poMap := hit.Fields
-		marshal, _ := json.Marshal(poMap)
-		_ = json.Unmarshal(marshal, &entity)
+		_ = json.Unmarshal(hit.Source, &entity)
 		//添加元素
 		lst = append(lst, entity)
 	}

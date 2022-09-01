@@ -37,10 +37,10 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 	for i := 0; i < contextValueOf.NumField(); i++ {
 		field := contextValueOf.Field(i)
 		fieldType := field.Type().String()
-		if !field.CanSet() || !strings.HasPrefix(fieldType, "data.TableSet[") {
+		if !field.CanSet() || !strings.HasPrefix(fieldType, "elasticSearch.IndexSet[") {
 			continue
 		}
-		data := contextValueOf.Type().Field(i).Tag.Get("data")
+		data := contextValueOf.Type().Field(i).Tag.Get("es")
 		var tableName string
 		if strings.HasPrefix(data, "name=") {
 			tableName = data[len("name="):]
@@ -48,7 +48,7 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 		if tableName == "" {
 			continue
 		}
-		// 再取tableSet的子属性，并设置值
+		// 再取IndexSet的子属性，并设置值
 		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(tableName)})
 	}
 	return customContext
