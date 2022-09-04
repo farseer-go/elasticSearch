@@ -11,28 +11,81 @@ import (
 
 // IndexSet 表操作
 type IndexSet[Table any] struct {
-	esContext *ESContext
-	indexName string
-	es        *elastic.Client
-	esService *elastic.SearchService
-	err       error
+	esContext   *ESContext
+	indexName   string
+	aliasesName string
+	es          *elastic.Client
+	esService   *elastic.SearchService
+	err         error
 }
+type mi map[string]interface{}
 
 // Init 在反射的时候会调用此方法
-func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string) {
+func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string, indexAliases string) {
 	indexSet.esContext = esContext
-	indexSet.SetIndexName(indexName)
+	indexSet.SetIndexName(indexName, indexAliases)
 }
 
 // SetIndexName 设置索引名称
-func (indexSet *IndexSet[Table]) SetIndexName(indexName string) {
+func (indexSet *IndexSet[Table]) SetIndexName(indexName string, indexAliases string) {
 	indexSet.indexName = indexName
-	indexSet.data().CreateIndex(indexName).Do(ctx)
+	indexSet.aliasesName = indexAliases
 }
 
 // GetIndexName 获取索引名称
 func (indexSet *IndexSet[Table]) GetIndexName() string {
 	return indexSet.indexName
+}
+
+// SetAliasesName 设置别名
+func (indexSet *IndexSet[Table]) SetAliasesName(aliasesName string) error {
+	_, err := indexSet.data().Alias().Add(indexSet.indexName, aliasesName).Do(ctx)
+	return err
+}
+
+// WhenNotExistsAddIndex 当不存在的时候创建索引
+func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
+	do, _ := indexSet.data().IndexExists(indexSet.indexName).Do(ctx)
+	if !do {
+		indexSet.CreateIndex(po)
+	}
+}
+
+// CreateIndex 创建索引
+func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
+	//表结构处理
+	miTable := make(map[string]interface{}, 0)
+	poValueOf := reflect.ValueOf(po)
+	for i := 0; i < poValueOf.NumField(); i++ {
+		prop := poValueOf.Type().Field(i).Name
+		esType := poValueOf.Type().Field(i).Tag.Get("es")
+		if esType != "" {
+			miTable[prop] = mi{"type": esType}
+		} else {
+			miTable[prop] = mi{"type": "keyword"}
+		}
+	}
+	//创建索引表结构和设置类型
+	mapping := mi{
+		"settings": mi{
+			"number_of_shards":   indexSet.esContext.esConfig.ShardsCount,
+			"number_of_replicas": indexSet.esContext.esConfig.ReplicasCount,
+			"refresh_interval":   strconv.Itoa(indexSet.esContext.esConfig.RefreshInterval) + "s",
+		},
+		"mappings": mi{
+			"properties": miTable,
+		},
+	}
+	marshal, _ := json.Marshal(mapping)
+	//flog.Println("json:", string(marshal))
+	_, _ = indexSet.data().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(ctx)
+	//flog.Println("createindex:", err)
+	//设置别名
+	arrayAliName := strings.Split(indexSet.aliasesName, ",")
+	for _, s := range arrayAliName {
+		_, _ = indexSet.data().Alias().Add(indexSet.indexName, s).Do(ctx)
+		//flog.Println("addalias:", err)
+	}
 }
 
 // 初始化ES
@@ -71,9 +124,15 @@ func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
 	return indexSet
 }
 
-// Del 删除指定Id数据
-func (indexSet *IndexSet[Table]) Del(id string) error {
+// DelData 删除指定Id数据
+func (indexSet *IndexSet[Table]) DelData(id string) error {
 	_, err := indexSet.data().Delete().Index(indexSet.indexName).Id(id).Do(ctx)
+	return err
+}
+
+// DelIndex 删除指定index索引数据
+func (indexSet *IndexSet[Table]) DelIndex(indices ...string) error {
+	_, err := indexSet.data().DeleteIndex(indices...).Do(ctx)
 	return err
 }
 
@@ -86,6 +145,7 @@ func (indexSet *IndexSet[Table]) Where(field string, fieldValue string) *IndexSe
 
 // Insert 插入数据
 func (indexSet *IndexSet[Table]) Insert(po Table) error {
+	indexSet.WhenNotExistsAddIndex(po)
 	var err error
 	poValueOf := reflect.ValueOf(po)
 	Id := "0"
@@ -103,7 +163,11 @@ func (indexSet *IndexSet[Table]) Insert(po Table) error {
 
 // InsertArray 数组的形式插入
 func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
-	var err error
+	if len(array) > 0 {
+		indexSet.WhenNotExistsAddIndex(array[0])
+	}
+	//批量添加
+	bulkRequest := indexSet.data().Bulk().Index(indexSet.indexName)
 	for _, table := range array {
 		poValueOf := reflect.ValueOf(table)
 		Id := "0"
@@ -115,17 +179,21 @@ func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 				break
 			}
 		}
-		_, err = indexSet.data().Index().Index(indexSet.indexName).Id(Id).BodyJson(table).Do(ctx)
-		if err != nil {
-			return err
-		}
+		req := elastic.NewBulkIndexRequest().Doc(table)
+		req.Id(Id) //指定id
+		bulkRequest.Add(req)
 	}
-	return nil
+	_, err := bulkRequest.Do(ctx)
+	return err
 }
 
 // InsertList 插入列表形式
 func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error {
-	var err error
+	if list.Count() > 0 {
+		indexSet.WhenNotExistsAddIndex(list.Index(0))
+	}
+	//批量添加
+	bulkRequest := indexSet.data().Bulk().Index(indexSet.indexName)
 	for i := 0; i < list.Count(); i++ {
 		poValueOf := reflect.ValueOf(list.Index(i))
 		Id := "0"
@@ -137,12 +205,12 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 				break
 			}
 		}
-		_, err = indexSet.data().Index().Index(indexSet.indexName).Id(Id).BodyJson(list.Index(i)).Do(ctx)
-		if err != nil {
-			return err
-		}
+		req := elastic.NewBulkIndexRequest().Doc(list.Index(i))
+		req.Id(Id) //指定id
+		bulkRequest.Add(req)
 	}
-	return nil
+	_, err := bulkRequest.Do(ctx)
+	return err
 }
 
 // ToList 转换List集合
@@ -150,7 +218,7 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	if indexSet.esService == nil {
 		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
 	}
-	resp, _ := indexSet.esService.TrackTotalHits(true).Do(ctx)
+	resp, _ := indexSet.esService.TrackTotalHits(true).Size(10000).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {

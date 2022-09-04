@@ -40,6 +40,7 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 		if !field.CanSet() || !strings.HasPrefix(fieldType, "elasticSearch.IndexSet[") {
 			continue
 		}
+		//表名
 		data := contextValueOf.Type().Field(i).Tag.Get("es")
 		var tableName string
 		if strings.HasPrefix(data, "name=") {
@@ -48,8 +49,18 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 		if tableName == "" {
 			continue
 		}
+		//别名
+		var aliasesName string
+		esAli := contextValueOf.Type().Field(i).Tag.Get("alias")
+		if strings.HasPrefix(esAli, "aliases=") {
+			aliasesName = esAli[len("aliasesName"):]
+		}
+		if aliasesName == "" {
+			aliasesName = tableName
+		}
+
 		// 再取IndexSet的子属性，并设置值
-		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(tableName)})
+		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(tableName), reflect.ValueOf(aliasesName)})
 	}
 	return customContext
 }

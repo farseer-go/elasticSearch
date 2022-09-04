@@ -10,15 +10,30 @@ import (
 )
 
 type UserPO struct {
-	Id int `gorm:"primaryKey"`
+	Id int `gorm:"primaryKey" es:"long"`
 	// 用户名称
-	Name string
+	Name string `es:"keyword"`
 	// 用户年龄
-	Age int
+	Age int `es:"long"`
+}
+type AdminPO struct {
+	Id int `gorm:"primaryKey" es:"long"`
+	// 用户名称
+	Name string `es:"keyword"`
+	// 用户年龄
+	Age int `es:"long"`
 }
 
 type elasticContext struct {
-	User IndexSet[UserPO] `es:"name=user"`
+	User  IndexSet[UserPO]  `es:"name=user" alias:"aliases=user123,user22,user88"`
+	Admin IndexSet[AdminPO] `es:"name=admin01" alias:"aliases=admin01_1,admin01_2,admin01_3"`
+}
+
+func TestIndexSet_CreateIndex(t *testing.T) {
+	po := UserPO{Age: 20, Name: "小小", Id: 100}
+	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	context := NewContext[elasticContext]("log_es")
+	context.User.CreateIndex(po)
 }
 
 func TestIndexSet_Init(t *testing.T) {
@@ -42,7 +57,13 @@ func TestIndexSet_Insert(t *testing.T) {
 	err := context.User.Insert(po)
 	assert.Equal(t, err, nil)
 }
-
+func TestIndexSet_Insert_index(t *testing.T) {
+	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	context := NewContext[elasticContext]("log_es")
+	po := AdminPO{Name: "小强", Age: 10, Id: 12}
+	err := context.Admin.Insert(po)
+	assert.Equal(t, err, nil)
+}
 func TestIndexSet_InsertArray(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[elasticContext]("log_es")

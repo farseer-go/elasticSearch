@@ -5,8 +5,8 @@ type elasticConfig struct {
 	Server          string
 	Username        string
 	Password        string
-	ReplicasCount   string
-	ShardsCount     string
-	RefreshInterval string
+	ReplicasCount   int
+	ShardsCount     int
+	RefreshInterval int
 	IndexFormat     string
 }
