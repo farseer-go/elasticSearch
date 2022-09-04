@@ -3,6 +3,7 @@ package elasticSearch
 import (
 	"encoding/json"
 	"github.com/farseer-go/collections"
+	"github.com/farseer-go/fs/flog"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 	"strconv"
@@ -58,7 +59,7 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	poValueOf := reflect.ValueOf(po)
 	for i := 0; i < poValueOf.NumField(); i++ {
 		prop := poValueOf.Type().Field(i).Name
-		esType := poValueOf.Type().Field(i).Tag.Get("es")
+		esType := poValueOf.Type().Field(i).Tag.Get("es_type")
 		if esType != "" {
 			miTable[prop] = mi{"type": esType}
 		} else {
@@ -78,13 +79,13 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	}
 	marshal, _ := json.Marshal(mapping)
 	//flog.Println("json:", string(marshal))
-	_, _ = indexSet.data().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(ctx)
-	//flog.Println("createindex:", err)
+	_, err := indexSet.data().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(ctx)
+	flog.Println("createindex:", err)
 	//设置别名
 	arrayAliName := strings.Split(indexSet.aliasesName, ",")
 	for _, s := range arrayAliName {
-		_, _ = indexSet.data().Alias().Add(indexSet.indexName, s).Do(ctx)
-		//flog.Println("addalias:", err)
+		_, err2 := indexSet.data().Alias().Add(indexSet.indexName, s).Do(ctx)
+		flog.Println("addalias:", err2)
 	}
 }
 
@@ -150,7 +151,7 @@ func (indexSet *IndexSet[Table]) Insert(po Table) error {
 	poValueOf := reflect.ValueOf(po)
 	Id := "0"
 	for i := 0; i < poValueOf.NumField(); i++ {
-		data := poValueOf.Type().Field(i).Tag.Get("gorm")
+		data := poValueOf.Type().Field(i).Tag.Get("es")
 		if strings.HasPrefix(data, "primaryKey") {
 			val := poValueOf.Field(i).Int()
 			Id = strconv.FormatInt(val, 10)
@@ -172,7 +173,7 @@ func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 		poValueOf := reflect.ValueOf(table)
 		Id := "0"
 		for i := 0; i < poValueOf.NumField(); i++ {
-			data := poValueOf.Type().Field(i).Tag.Get("gorm")
+			data := poValueOf.Type().Field(i).Tag.Get("es")
 			if strings.HasPrefix(data, "primaryKey") {
 				val := poValueOf.Field(i).Int()
 				Id = strconv.FormatInt(val, 10)
@@ -198,7 +199,7 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 		poValueOf := reflect.ValueOf(list.Index(i))
 		Id := "0"
 		for i := 0; i < poValueOf.NumField(); i++ {
-			data := poValueOf.Type().Field(i).Tag.Get("gorm")
+			data := poValueOf.Type().Field(i).Tag.Get("es")
 			if strings.HasPrefix(data, "primaryKey") {
 				val := poValueOf.Field(i).Int()
 				Id = strconv.FormatInt(val, 10)

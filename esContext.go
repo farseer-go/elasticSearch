@@ -26,13 +26,20 @@ func initConfig(esName string) *ESContext {
 // NewContext 数据库上下文初始化
 // esName：数据库配置名称
 func NewContext[TEsContext any](esName string) *TEsContext {
+	var context TEsContext
+	InitContext(&context, esName)
+	return &context
+}
+
+// InitContext 数据库上下文初始化
+// esName：数据库配置名称
+func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 	if esName == "" {
 		panic("esName入参必须设置有效的值")
 	}
 	dbConfig := initConfig(esName) // 嵌入类型
 	//var dbName string       // 数据库配置名称
-	customContext := new(TEsContext)
-	contextValueOf := reflect.ValueOf(customContext).Elem()
+	contextValueOf := reflect.ValueOf(esContext).Elem()
 
 	for i := 0; i < contextValueOf.NumField(); i++ {
 		field := contextValueOf.Field(i)
@@ -42,11 +49,11 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 		}
 		//表名
 		data := contextValueOf.Type().Field(i).Tag.Get("es")
-		var tableName string
+		var indexName string
 		if strings.HasPrefix(data, "name=") {
-			tableName = data[len("name="):]
+			indexName = data[len("name="):]
 		}
-		if tableName == "" {
+		if indexName == "" {
 			continue
 		}
 		//别名
@@ -56,11 +63,11 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 			aliasesName = esAli[len("aliasesName"):]
 		}
 		if aliasesName == "" {
-			aliasesName = tableName
+			aliasesName = indexName
 		}
 
 		// 再取IndexSet的子属性，并设置值
-		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(tableName), reflect.ValueOf(aliasesName)})
+		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(indexName), reflect.ValueOf(aliasesName)})
+
 	}
-	return customContext
 }
