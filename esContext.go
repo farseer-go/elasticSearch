@@ -48,24 +48,25 @@ func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 			continue
 		}
 		//表名
-		data := contextValueOf.Type().Field(i).Tag.Get("es")
 		var indexName string
-		if strings.HasPrefix(data, "name=") {
-			indexName = data[len("name="):]
+		//别名
+		var aliasesName string
+		data := contextValueOf.Type().Field(i).Tag.Get("es")
+		array := strings.Split(data, "&")
+		for _, s := range array {
+			if strings.HasPrefix(s, "index=") {
+				indexName = s[len("index="):]
+			}
+			if strings.HasPrefix(s, "alias=") {
+				aliasesName = s[len("alias="):]
+			}
 		}
 		if indexName == "" {
 			continue
 		}
-		//别名
-		var aliasesName string
-		esAli := contextValueOf.Type().Field(i).Tag.Get("alias")
-		if strings.HasPrefix(esAli, "aliases=") {
-			aliasesName = esAli[len("aliasesName"):]
-		}
 		if aliasesName == "" {
 			aliasesName = indexName
 		}
-
 		// 再取IndexSet的子属性，并设置值
 		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(indexName), reflect.ValueOf(aliasesName)})
 

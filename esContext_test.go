@@ -7,7 +7,7 @@ import (
 )
 
 type TestEsContext struct {
-	User IndexSet[UserPO] `es:"name=user" alias:"user_01,user_02,user_03"`
+	User IndexSet[UserPO] `es:"index=user&alias=user_01,user_02,user_03"`
 }
 
 type UserPO struct {
