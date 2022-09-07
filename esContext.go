@@ -44,16 +44,21 @@ func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 
 	for i := 0; i < contextValueOf.NumField(); i++ {
 		field := contextValueOf.Field(i)
-		_, isIndexSet := types.IsEsIndexSet(field)
-		if !field.CanSet() || !isIndexSet {
+		if !field.CanSet() {
 			continue
 		}
+
+		_, isIndexSet := types.IsEsIndexSet(field)
+		if !isIndexSet {
+			continue
+		}
+
 		//表名
 		var indexName string
 		//别名
 		var aliasesName string
 		data := contextValueOf.Type().Field(i).Tag.Get("es")
-		array := strings.Split(data, "&")
+		array := strings.Split(data, ";")
 		for _, s := range array {
 			if strings.HasPrefix(s, "index=") {
 				indexName = s[len("index="):]
