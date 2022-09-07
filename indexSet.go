@@ -55,7 +55,7 @@ func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
 // CreateIndex 创建索引
 func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	//表结构处理
-	miTable := make(map[string]interface{}, 0)
+	miTable := make(map[string]interface{})
 	poValueOf := reflect.ValueOf(po)
 	for i := 0; i < poValueOf.NumField(); i++ {
 		prop := poValueOf.Type().Field(i).Name
