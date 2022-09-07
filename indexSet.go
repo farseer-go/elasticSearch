@@ -12,18 +12,24 @@ import (
 
 // IndexSet 表操作
 type IndexSet[Table any] struct {
-	esContext   *ESContext
-	indexName   string
-	aliasesName string
-	es          *elastic.Client
-	esService   *elastic.SearchService
-	err         error
+	esContext       *ESContext
+	indexName       string
+	aliasesName     string
+	es              *elastic.Client
+	esService       *elastic.SearchService
+	err             error
+	ShardsCount     int
+	ReplicasCount   int
+	RefreshInterval int
 }
 type mi map[string]interface{}
 
 // Init 在反射的时候会调用此方法
-func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string, indexAliases string) {
+func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string, indexAliases string, shardsCount int, replicasCount int, refreshInterval int) {
 	indexSet.esContext = esContext
+	indexSet.ShardsCount = shardsCount
+	indexSet.ReplicasCount = replicasCount
+	indexSet.RefreshInterval = refreshInterval
 	indexSet.SetIndexName(indexName, indexAliases)
 }
 
@@ -66,12 +72,24 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 			miTable[prop] = mi{"type": "keyword"}
 		}
 	}
+	_shardsCount := indexSet.esContext.esConfig.ShardsCount
+	_replicasCount := indexSet.esContext.esConfig.ReplicasCount
+	_refreshInterval := indexSet.esContext.esConfig.RefreshInterval
+	if indexSet.ShardsCount > 0 {
+		_shardsCount = indexSet.ShardsCount
+	}
+	if indexSet.ReplicasCount > 0 {
+		_replicasCount = indexSet.ReplicasCount
+	}
+	if indexSet.RefreshInterval > 0 {
+		_refreshInterval = indexSet.RefreshInterval
+	}
 	//创建索引表结构和设置类型
 	mapping := mi{
 		"settings": mi{
-			"number_of_shards":   indexSet.esContext.esConfig.ShardsCount,
-			"number_of_replicas": indexSet.esContext.esConfig.ReplicasCount,
-			"refresh_interval":   strconv.Itoa(indexSet.esContext.esConfig.RefreshInterval) + "s",
+			"number_of_shards":   _shardsCount,
+			"number_of_replicas": _replicasCount,
+			"refresh_interval":   strconv.Itoa(_refreshInterval) + "s",
 		},
 		"mappings": mi{
 			"properties": miTable,

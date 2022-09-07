@@ -4,7 +4,9 @@ import (
 	"github.com/farseer-go/fs/configure"
 	"github.com/farseer-go/fs/types"
 	"reflect"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type ESContext struct {
@@ -57,14 +59,30 @@ func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 		var indexName string
 		//别名
 		var aliasesName string
+		//分片
+		var shardsCount int
+		//复制
+		var replicasCount int
+		//刷新时间
+		var refreshInterval int
 		data := contextValueOf.Type().Field(i).Tag.Get("es")
 		array := strings.Split(data, ";")
 		for _, s := range array {
 			if strings.HasPrefix(s, "index=") {
 				indexName = s[len("index="):]
+				indexName = ReplaceTime(indexName)
 			}
 			if strings.HasPrefix(s, "alias=") {
 				aliasesName = s[len("alias="):]
+			}
+			if strings.HasPrefix(s, "shards=") {
+				shardsCount, _ = strconv.Atoi(s[len("shards="):])
+			}
+			if strings.HasPrefix(s, "replicas=") {
+				replicasCount, _ = strconv.Atoi(s[len("replicas="):])
+			}
+			if strings.HasPrefix(s, "refresh=") {
+				refreshInterval, _ = strconv.Atoi(s[len("refresh="):])
 			}
 		}
 		if indexName == "" {
@@ -74,7 +92,38 @@ func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 			aliasesName = indexName
 		}
 		// 再取IndexSet的子属性，并设置值
-		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(indexName), reflect.ValueOf(aliasesName)})
+		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(indexName), reflect.ValueOf(aliasesName), reflect.ValueOf(shardsCount), reflect.ValueOf(replicasCount), reflect.ValueOf(refreshInterval)})
 
 	}
+}
+
+// ReplaceTime 替换索引内的时间
+func ReplaceTime(index string) string {
+	now := time.Now().String()
+	index = strings.ReplaceAll(index, "yyyy", timeFormat(now, "yyyy"))
+	index = strings.ReplaceAll(index, "MM", timeFormat(now, "MM"))
+	index = strings.ReplaceAll(index, "dd", timeFormat(now, "dd"))
+	index = strings.ReplaceAll(index, "hh", timeFormat(now, "hh"))
+	index = strings.ReplaceAll(index, "mm", timeFormat(now, "mm"))
+	return index
+}
+
+// 2022-09-07 21:41:30.9100946 +0800 CST m=+0.012157601
+func timeFormat(time string, format string) string {
+	array := strings.Split(time, " ")
+	ymd := strings.Split(array[0], "-")
+	hms := strings.Split(array[1], ":")
+	switch format {
+	case "yyyy":
+		return ymd[0]
+	case "MM":
+		return ymd[1]
+	case "dd":
+		return ymd[2]
+	case "hh":
+		return hms[0]
+	case "mm":
+		return hms[1]
+	}
+	return ""
 }
