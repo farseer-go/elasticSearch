@@ -2,6 +2,7 @@ package elasticSearch
 
 import (
 	"github.com/farseer-go/fs/configure"
+	"github.com/farseer-go/fs/types"
 	"reflect"
 	"strings"
 )
@@ -43,8 +44,8 @@ func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 
 	for i := 0; i < contextValueOf.NumField(); i++ {
 		field := contextValueOf.Field(i)
-		fieldType := field.Type().String()
-		if !field.CanSet() || !strings.HasPrefix(fieldType, "elasticSearch.IndexSet[") {
+		_, isIndexSet := types.IsEsIndexSet(field)
+		if !field.CanSet() || !isIndexSet {
 			continue
 		}
 		//表名
