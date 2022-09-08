@@ -127,3 +127,53 @@ func timeFormat(time string, format string) string {
 	}
 	return ""
 }
+
+// GetEsType 获取elasticsearch对应类型
+func GetEsType(val reflect.Type) string {
+	typeStr := val.String()
+	typeKind := val.Kind()
+	if strings.HasSuffix(typeStr, ".Enum") {
+		return "byte"
+	}
+	switch typeStr {
+	case "time.Time":
+		return "date"
+	case "datetime.DateTime":
+		return "date"
+	}
+	switch typeKind {
+	case reflect.String:
+		return "Keywords"
+	case reflect.Bool:
+		return "boolean"
+	case reflect.Int:
+		return "integer"
+	case reflect.Int16:
+		return "integer"
+	case reflect.Int32:
+		return "integer"
+	case reflect.Int64:
+		return "long"
+	case reflect.Uint:
+		return "integer"
+	case reflect.Uint16:
+		return "integer"
+	case reflect.Uint32:
+		return "integer"
+	case reflect.Uint64:
+		return "long"
+	case reflect.Float32:
+		return "double"
+	case reflect.Float64:
+		return "double"
+	case reflect.Struct:
+		return "object"
+	case reflect.Array:
+		return "object"
+	case reflect.Slice:
+		return "object"
+	case reflect.Map:
+		return "flattened"
+	}
+	return "byte"
+}

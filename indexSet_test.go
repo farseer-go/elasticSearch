@@ -3,11 +3,38 @@ package elasticSearch
 import (
 	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs/configure"
+	"github.com/farseer-go/fs/core/eumLogLevel"
 	"github.com/farseer-go/fs/flog"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
+
+// 枚举
+const (
+	a int = iota // a = 0
+	b int = iota // b = 1
+	c int = iota // c = 2
+)
+
+func TestPOEsType(t *testing.T) {
+	po := UserPO{Age: 20, Name: "小小", Id: 100, Enum: eumLogLevel.Debug}
+	//表结构处理
+	miTable := make(map[string]interface{}, 0)
+	poValueOf := reflect.ValueOf(po)
+	poTypeOf := reflect.TypeOf(po)
+	for i := 0; i < poValueOf.NumField(); i++ {
+		prop := poValueOf.Type().Field(i).Name
+		esType := poValueOf.Type().Field(i).Tag.Get("es_type")
+		poType := poTypeOf.Field(i).Type
+		if esType != "" {
+			miTable[prop] = esType // mi{"type": esType}
+		} else {
+			miTable[prop] = GetEsType(poType)
+		}
+	}
+	flog.Println(miTable)
+}
 
 func TestIndexSet_Init(t *testing.T) {
 	po := UserPO{Age: 20, Name: "小小", Id: 100}

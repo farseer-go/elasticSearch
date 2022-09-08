@@ -63,13 +63,15 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	//表结构处理
 	miTable := make(map[string]interface{}, 0)
 	poValueOf := reflect.ValueOf(po)
+	poTypeOf := reflect.TypeOf(po)
 	for i := 0; i < poValueOf.NumField(); i++ {
 		prop := poValueOf.Type().Field(i).Name
 		esType := poValueOf.Type().Field(i).Tag.Get("es_type")
+		poType := poTypeOf.Field(i).Type
 		if esType != "" {
 			miTable[prop] = mi{"type": esType}
 		} else {
-			miTable[prop] = mi{"type": "keyword"}
+			miTable[prop] = mi{"type": GetEsType(poType)}
 		}
 	}
 	_shardsCount := indexSet.esContext.esConfig.ShardsCount

@@ -2,9 +2,12 @@ package elasticSearch
 
 import (
 	"fmt"
+	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs/configure"
+	"github.com/farseer-go/fs/core/eumLogLevel"
 	"github.com/farseer-go/fs/flog"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/genproto/googleapis/type/datetime"
 	"testing"
 	"time"
 )
@@ -14,11 +17,29 @@ type TestEsContext struct {
 }
 
 type UserPO struct {
-	Id int `es:"primaryKey" es_type:"long"`
+	Id int `es:"primaryKey" es_type:"integer"`
 	// 用户名称
 	Name string `es_type:"keyword"`
 	// 用户年龄
-	Age int `es_type:"long"`
+	Age       int `es_type:"integer"`
+	Enum      eumLogLevel.Enum
+	StructStr struct{}
+	Array     []string
+	Liststr   collections.List[UserPO]
+	Int       int
+	Int16     int16
+	Int32     int32
+	Int64     int64
+	UInt      uint
+	UInt16    uint16
+	UInt32    uint32
+	UInt64    uint64
+	Float32   float32
+	Float64   float64
+	MapStr    map[string]interface{}
+	BoolStr   bool
+	DateStr   time.Time
+	DateStr2  datetime.DateTime
 }
 
 func TestNewContext(t *testing.T) {
