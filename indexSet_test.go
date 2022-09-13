@@ -3,22 +3,14 @@ package elasticSearch
 import (
 	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs/configure"
-	"github.com/farseer-go/fs/core/eumLogLevel"
 	"github.com/farseer-go/fs/flog"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
 
-// 枚举
-const (
-	a int = iota // a = 0
-	b int = iota // b = 1
-	c int = iota // c = 2
-)
-
 func TestPOEsType(t *testing.T) {
-	po := UserPO{Age: 20, Name: "小小", Id: 100, Enum: eumLogLevel.Debug}
+	po := UserPO{Age: 20, Name: "小小", Id: 100}
 	//表结构处理
 	miTable := make(map[string]interface{}, 0)
 	poValueOf := reflect.ValueOf(po)
@@ -60,7 +52,7 @@ func TestIndexSet_InsertArray(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
 	var array []UserPO
-	po := UserPO{Name: "小强2", Age: 10, Id: 1}
+	po := UserPO{Name: "小强2", Age: 10, Id: 13}
 	array = append(array, po)
 	err := context.User.InsertArray(array)
 	assert.Equal(t, err, nil)
@@ -77,47 +69,88 @@ func TestIndexSet_InsertList(t *testing.T) {
 func TestIndexSet_Select(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
-	list := context.User.Select("Name").ToList()
-	assert.Equal(t, list.First().Name, "小强")
+	list := collections.NewList(UserPO{Name: "小丽", Age: 20, Id: 2}, UserPO{Name: "小王", Age: 30, Id: 3})
+	err := context.User.InsertList(list)
+	if err == nil {
+		getList := context.User.Select("Name").ToList()
+		getName := getList.First().Name
+		assert.Equal(t, getName, "小丽")
+	}
 }
 func TestIndexSet_Asc(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
-	list := context.User.Asc("Id").ToList()
-	assert.Equal(t, list.First().Name, "小强2")
+	getList := context.User.Asc("Id").ToList()
+	assert.Equal(t, getList.First().Name, "小丽")
 }
 
 func TestIndexSet_Desc(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
 	list := context.User.Desc("Id").ToList()
-	assert.Equal(t, list.First().Name, "小强")
+	assert.Equal(t, list.First().Name, "小王")
 }
 
 func TestIndexSet_GetIndexName(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
 	name := context.User.GetIndexName()
-	assert.Equal(t, name, "user")
+	assert.Equal(t, name, context.User.indexName)
 }
 
 func TestIndexSet_ToList(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
 	list := context.User.ToList()
-	assert.Equal(t, list.Count(), 4)
+	assert.Equal(t, list.Count(), 5)
 }
 
 func TestIndexSet_ToPageList(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
 	list := context.User.ToPageList(1, 2)
-	assert.Equal(t, list.First().Name, "小强2")
+	assert.Equal(t, list.First().Name, "小王")
 }
 
 func TestIndexSet_Where(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
+	po := UserPO{Name: "小王", Age: 30, Id: 14}
+	_ = context.User.Insert(po)
 	list := context.User.Where("Age", "30").ToList()
 	assert.Equal(t, list.First().Name, "小王")
+}
+func TestIndexSet_DelIndex(t *testing.T) {
+	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	context := NewContext[TestEsContext]("log_es")
+	context.User.SetIndexName("user_111", "user_alis_111")
+	po := UserPO{Name: "小强", Age: 10, Id: 12}
+	_ = context.User.Insert(po)
+	err := context.User.DelIndex(context.User.indexName)
+	assert.Equal(t, err, nil)
+}
+func TestIndexSet_DelData(t *testing.T) {
+	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	context := NewContext[TestEsContext]("log_es")
+	po := UserPO{Name: "小强", Age: 10, Id: 888}
+	_ = context.User.Insert(po)
+	err := context.User.DelData("888")
+	assert.Equal(t, err, nil)
+}
+func TestIndexSet_SetAliasesName(t *testing.T) {
+	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	context := NewContext[TestEsContext]("log_es")
+	context.User.SetIndexName("test_11", "test_alis_11")
+	_ = context.User.SetAliasesName("test_alis_22")
+	po := UserPO{Name: "小强", Age: 10, Id: 888, Company: "上海科技"}
+	err := context.User.Insert(po)
+	assert.Equal(t, err, nil)
+}
+func TestIndexSet_Data(t *testing.T) {
+	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	context := NewContext[TestEsContext]("log_es")
+	context.User.esContext.esConfig.Server = "0.0.0.0"
+	assert.Panics(t, func() {
+		_ = context.User.SetAliasesName("test_alis_223")
+	})
 }

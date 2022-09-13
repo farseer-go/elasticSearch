@@ -2,18 +2,15 @@ package elasticSearch
 
 import (
 	"fmt"
-	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs/configure"
-	"github.com/farseer-go/fs/core/eumLogLevel"
 	"github.com/farseer-go/fs/flog"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/genproto/googleapis/type/datetime"
 	"testing"
 	"time"
 )
 
 type TestEsContext struct {
-	User IndexSet[UserPO] `es:"index=user_yyyy_MM_dd_hh_mm;alias=user_01,user_02,user_03;shards=2;replicas=2;refresh=2"`
+	User IndexSet[UserPO] `es:"index=user_yyyy_MM_dd;alias=user_yyyy_MM_dd;shards=2;replicas=2;refresh=2"`
 }
 
 type UserPO struct {
@@ -21,25 +18,9 @@ type UserPO struct {
 	// 用户名称
 	Name string `es_type:"keyword"`
 	// 用户年龄
-	Age       int `es_type:"integer"`
-	Enum      eumLogLevel.Enum
-	StructStr struct{}
-	Array     []string
-	Liststr   collections.List[UserPO]
-	Int       int
-	Int16     int16
-	Int32     int32
-	Int64     int64
-	UInt      uint
-	UInt16    uint16
-	UInt32    uint32
-	UInt64    uint64
-	Float32   float32
-	Float64   float64
-	MapStr    map[string]interface{}
-	BoolStr   bool
-	DateStr   time.Time
-	DateStr2  datetime.DateTime
+	Age int `es_type:"integer"`
+	//公司
+	Company string
 }
 
 func TestNewContext(t *testing.T) {
@@ -47,7 +28,7 @@ func TestNewContext(t *testing.T) {
 	configure.SetDefault("ElasticSearch.test", "Server=http://es:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("test")
 
-	assert.Equal(t, "user", context.User.indexName)
+	assert.Equal(t, "user_2022_09_13", context.User.indexName)
 }
 
 func TestInitContext(t *testing.T) {
@@ -72,15 +53,6 @@ func TestInitContext(t *testing.T) {
 
 	var context TestEsContext
 	InitContext(&context, "test")
-	assert.Equal(t, "user", context.User.indexName)
+	assert.Equal(t, "user_2022_09_13", context.User.indexName)
 
-	InitContext(&context, "test")
-	assert.Equal(t, "user", context.User.indexName)
-
-	context2 := new(TestEsContext)
-	InitContext(context2, "test")
-	assert.Equal(t, "user", context2.User.indexName)
-
-	InitContext(context2, "test")
-	assert.Equal(t, "user", context2.User.indexName)
 }

@@ -74,6 +74,7 @@ func InitContext[TEsContext any](esContext *TEsContext, esName string) {
 			}
 			if strings.HasPrefix(s, "alias=") {
 				aliasesName = s[len("alias="):]
+				aliasesName = ReplaceTime(aliasesName)
 			}
 			if strings.HasPrefix(s, "shards=") {
 				shardsCount, _ = strconv.Atoi(s[len("shards="):])
