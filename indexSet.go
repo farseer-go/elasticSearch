@@ -119,10 +119,8 @@ func (indexSet *IndexSet[Table]) data() *elastic.Client {
 		)
 		indexSet.es = es
 	}
-	//连接服务测试
-	_, _, err := indexSet.es.Ping(indexSet.esContext.esConfig.Server).Do(ctx)
-	if err != nil {
-		panic(err)
+	if indexSet.es == nil {
+		panic("elasticsearch初始化失败")
 	}
 	return indexSet.es
 }
