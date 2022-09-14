@@ -127,7 +127,7 @@ func (indexSet *IndexSet[Table]) data() *elastic.Client {
 
 // Select 筛选字段
 func (indexSet *IndexSet[Table]) Select(fields ...string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).DocvalueFields(fields...)
+	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).FetchSourceContext(elastic.NewFetchSourceContext(true).Include(fields...))
 	return indexSet
 }
 
@@ -237,7 +237,7 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	if indexSet.esService == nil {
 		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
 	}
-	resp, _ := indexSet.esService.TrackTotalHits(true).Size(10000).Do(ctx)
+	resp, _ := indexSet.esService.From(0).Size(10000).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {

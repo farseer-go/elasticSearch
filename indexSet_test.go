@@ -69,10 +69,11 @@ func TestIndexSet_InsertList(t *testing.T) {
 func TestIndexSet_Select(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
+	context.User.SetIndexName("user_select_index_01", "user_select_alis_index_01")
 	list := collections.NewList(UserPO{Name: "小丽", Age: 20, Id: 2}, UserPO{Name: "小王", Age: 30, Id: 3})
 	err := context.User.InsertList(list)
 	if err == nil {
-		getList := context.User.Select("Name").ToList()
+		getList := context.User.Select("Name", "Age").ToList()
 		getName := getList.First().Name
 		assert.Equal(t, getName, "小丽")
 	}
@@ -108,8 +109,11 @@ func TestIndexSet_ToList(t *testing.T) {
 func TestIndexSet_ToPageList(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := NewContext[TestEsContext]("log_es")
-	list := context.User.ToPageList(1, 2)
-	assert.Equal(t, list.First().Name, "小王")
+	context.User.SetIndexName("user_page_index_01", "user_page_alis_index_01")
+	list := collections.NewList(UserPO{Name: "小丽", Age: 20, Id: 2}, UserPO{Name: "小王", Age: 30, Id: 3}, UserPO{Name: "小王2", Age: 30, Id: 3})
+	_ = context.User.InsertList(list)
+	getUser := context.User.ToPageList(1, 2)
+	assert.Equal(t, getUser.First().Name, "小王2")
 }
 
 func TestIndexSet_Where(t *testing.T) {
