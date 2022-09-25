@@ -255,6 +255,9 @@ func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collect
 		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
 	}
 	resp, _ := indexSet.esService.From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	if resp == nil {
+		return collections.NewList[Table]()
+	}
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
