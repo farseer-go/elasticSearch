@@ -37,6 +37,7 @@ func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string, in
 func (indexSet *IndexSet[Table]) SetIndexName(indexName string, indexAliases string) {
 	indexSet.indexName = indexName
 	indexSet.aliasesName = indexAliases
+	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
 }
 
 // GetIndexName 获取索引名称
@@ -127,19 +128,19 @@ func (indexSet *IndexSet[Table]) data() *elastic.Client {
 
 // Select 筛选字段
 func (indexSet *IndexSet[Table]) Select(fields ...string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).FetchSourceContext(elastic.NewFetchSourceContext(true).Include(fields...))
+	indexSet.esService = indexSet.esService.FetchSourceContext(elastic.NewFetchSourceContext(true).Include(fields...))
 	return indexSet
 }
 
 // Asc 正序排序
 func (indexSet *IndexSet[Table]) Asc(field string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Sort(field, true)
+	indexSet.esService = indexSet.esService.Sort(field, true)
 	return indexSet
 }
 
 // Desc 倒序排序
 func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Sort(field, false)
+	indexSet.esService = indexSet.esService.Sort(field, false)
 	return indexSet
 }
 
@@ -158,7 +159,7 @@ func (indexSet *IndexSet[Table]) DelIndex(indices ...string) error {
 // Where 倒序排序
 func (indexSet *IndexSet[Table]) Where(field string, fieldValue string) *IndexSet[Table] {
 	termQuery := elastic.NewTermQuery(field, fieldValue)
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Query(termQuery)
+	indexSet.esService = indexSet.esService.Query(termQuery)
 	return indexSet
 }
 
@@ -234,10 +235,10 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
-	if indexSet.esService == nil {
-		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
-	}
 	resp, _ := indexSet.esService.From(0).Size(10000).Do(ctx)
+	if resp == nil {
+		return collections.NewList[Table]()
+	}
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
@@ -251,9 +252,6 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 
 // ToPageList 转成分页集合
 func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.List[Table] {
-	if indexSet.esService == nil {
-		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
-	}
 	resp, _ := indexSet.esService.From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
 	if resp == nil {
 		return collections.NewList[Table]()

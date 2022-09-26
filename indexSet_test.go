@@ -73,7 +73,7 @@ func TestIndexSet_Select(t *testing.T) {
 	list := collections.NewList(UserPO{Name: "小丽", Age: 20, Id: 2}, UserPO{Name: "小王", Age: 30, Id: 3})
 	err := context.User.InsertList(list)
 	if err == nil {
-		getList := context.User.Select("Name", "Age").ToList()
+		getList := context.User.Select("Name").ToList()
 		getName := getList.First().Name
 		assert.Equal(t, getName, "小丽")
 	}
