@@ -235,17 +235,18 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 	bulkRequest := indexSet.getClient().Bulk().Index(indexSet.indexName)
 	for i := 0; i < list.Count(); i++ {
 		poValueOf := reflect.ValueOf(list.Index(i))
-		Id := "0"
+		var id int64
 		for i := 0; i < poValueOf.NumField(); i++ {
 			data := poValueOf.Type().Field(i).Tag.Get("es")
 			if strings.HasPrefix(data, "primaryKey") {
-				val := poValueOf.Field(i).Int()
-				Id = strconv.FormatInt(val, 10)
+				id = poValueOf.Field(i).Int()
 				break
 			}
 		}
 		req := elastic.NewBulkIndexRequest().Doc(list.Index(i))
-		req.Id(Id) //指定id
+		if id > 0 {
+			req.Id(strconv.FormatInt(id, 10)) //指定id
+		}
 		bulkRequest.Add(req)
 	}
 	_, err := bulkRequest.Do(ctx)
@@ -267,18 +268,18 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 }
 
 // ToPageList 转成分页集合
-func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.List[Table] {
-	resp, _ := indexSet.data().From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx) //
+func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.PageList[Table] {
+	resp, _ := indexSet.data().From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	lst := collections.NewList[Table]()
+
 	if resp == nil {
-		return collections.NewList[Table]()
+		return collections.NewPageList[Table](lst, 0)
 	}
-	hitArray := resp.Hits.Hits
-	var lst []Table
-	for _, hit := range hitArray {
+
+	for _, hit := range resp.Hits.Hits {
 		var entity Table
 		_ = json.Unmarshal(hit.Source, &entity)
-		//添加元素
-		lst = append(lst, entity)
+		lst.Add(entity)
 	}
-	return collections.NewList[Table](lst...)
+	return collections.NewPageList[Table](lst, resp.Hits.TotalHits.Value)
 }
