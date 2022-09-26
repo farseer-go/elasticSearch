@@ -73,7 +73,7 @@ func TestIndexSet_Select(t *testing.T) {
 	list := collections.NewList(UserPO{Name: "小丽", Age: 20, Id: 2}, UserPO{Name: "小王", Age: 30, Id: 3})
 	err := context.User.InsertList(list)
 	if err == nil {
-		getList := context.User.Select("Name", "Age").ToList()
+		getList := context.User.Select("Name").ToList()
 		getName := getList.First().Name
 		assert.Equal(t, getName, "小丽")
 	}
@@ -113,7 +113,7 @@ func TestIndexSet_ToPageList(t *testing.T) {
 	list := collections.NewList(UserPO{Name: "小丽", Age: 20, Id: 2}, UserPO{Name: "小王", Age: 30, Id: 3}, UserPO{Name: "小王2", Age: 30, Id: 3})
 	_ = context.User.InsertList(list)
 	getUser := context.User.ToPageList(1, 2)
-	assert.Equal(t, getUser.First().Name, "小王2")
+	assert.Equal(t, getUser.List.First().Name, "小王2")
 }
 
 func TestIndexSet_Where(t *testing.T) {
