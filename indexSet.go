@@ -15,8 +15,8 @@ type IndexSet[Table any] struct {
 	esContext       *ESContext
 	indexName       string
 	aliasesName     string
-	es              *elastic.Client
-	esService       *elastic.SearchService
+	client          *elastic.Client
+	searchService   *elastic.SearchService
 	err             error
 	ShardsCount     int
 	ReplicasCount   int
@@ -44,15 +44,41 @@ func (indexSet *IndexSet[Table]) GetIndexName() string {
 	return indexSet.indexName
 }
 
+// 初始化es
+func (indexSet *IndexSet[Table]) data() *elastic.SearchService {
+	indexSet.getClient()
+	return indexSet.searchService
+}
+
+// 初始化client
+func (indexSet *IndexSet[Table]) getClient() *elastic.Client {
+	if indexSet.client == nil {
+		es, _ := elastic.NewClient(
+			elastic.SetURL(indexSet.esContext.esConfig.Server),
+			elastic.SetBasicAuth(indexSet.esContext.esConfig.Username, indexSet.esContext.esConfig.Password),
+			elastic.SetSniff(false), //非集群下，关闭嗅探机制
+		)
+
+		if es == nil {
+			panic("elasticsearch初始化失败")
+		}
+
+		indexSet.client = es
+		indexSet.searchService = es.Search().Index(indexSet.aliasesName)
+	}
+	return indexSet.client
+}
+
 // SetAliasesName 设置别名
 func (indexSet *IndexSet[Table]) SetAliasesName(aliasesName string) error {
-	_, err := indexSet.data().Alias().Add(indexSet.indexName, aliasesName).Do(ctx)
+	_, err := indexSet.getClient().Alias().Add(indexSet.indexName, aliasesName).Do(ctx)
 	return err
 }
 
 // WhenNotExistsAddIndex 当不存在的时候创建索引
 func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
-	do, _ := indexSet.data().IndexExists(indexSet.indexName).Do(ctx)
+	indexSet.data()
+	do, _ := indexSet.client.IndexExists(indexSet.indexName).Do(ctx)
 	if !do {
 		indexSet.CreateIndex(po)
 	}
@@ -99,66 +125,60 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	}
 	marshal, _ := json.Marshal(mapping)
 	//flog.Println("json:", string(marshal))
-	_, err := indexSet.data().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(ctx)
+	_, err := indexSet.getClient().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(ctx)
 	flog.Println("createindex:", err)
+
 	//设置别名
 	arrayAliName := strings.Split(indexSet.aliasesName, ",")
 	for _, s := range arrayAliName {
-		_, err2 := indexSet.data().Alias().Add(indexSet.indexName, s).Do(ctx)
+		err2 := indexSet.SetAliasesName(s)
 		flog.Println("addalias:", err2)
 	}
 }
 
-// 初始化ES
-func (indexSet *IndexSet[Table]) data() *elastic.Client {
-	if indexSet.es == nil {
-		es, _ := elastic.NewClient(
-			elastic.SetURL(indexSet.esContext.esConfig.Server),
-			elastic.SetBasicAuth(indexSet.esContext.esConfig.Username, indexSet.esContext.esConfig.Password),
-			elastic.SetSniff(false), //非集群下，关闭嗅探机制
-		)
-		indexSet.es = es
-	}
-	if indexSet.es == nil {
-		panic("elasticsearch初始化失败")
-	}
-	return indexSet.es
-}
-
 // Select 筛选字段
 func (indexSet *IndexSet[Table]) Select(fields ...string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).FetchSourceContext(elastic.NewFetchSourceContext(true).Include(fields...))
+	indexSet.searchService = indexSet.data().FetchSourceContext(elastic.NewFetchSourceContext(true).Include(fields...))
 	return indexSet
 }
 
 // Asc 正序排序
 func (indexSet *IndexSet[Table]) Asc(field string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Sort(field, true)
+	indexSet.searchService = indexSet.data().Sort(field, true)
 	return indexSet
 }
 
 // Desc 倒序排序
 func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Sort(field, false)
+	indexSet.searchService = indexSet.data().Sort(field, false)
 	return indexSet
 }
 
 // DelData 删除指定Id数据
 func (indexSet *IndexSet[Table]) DelData(id string) error {
-	_, err := indexSet.data().Delete().Index(indexSet.indexName).Id(id).Do(ctx)
+	_, err := indexSet.getClient().Delete().Index(indexSet.indexName).Id(id).Do(ctx)
 	return err
 }
 
 // DelIndex 删除指定index索引数据
 func (indexSet *IndexSet[Table]) DelIndex(indices ...string) error {
-	_, err := indexSet.data().DeleteIndex(indices...).Do(ctx)
+	_, err := indexSet.getClient().DeleteIndex(indices...).Do(ctx)
 	return err
 }
 
 // Where 倒序排序
-func (indexSet *IndexSet[Table]) Where(field string, fieldValue string) *IndexSet[Table] {
+func (indexSet *IndexSet[Table]) Where(field string, fieldValue any) *IndexSet[Table] {
+	switch fieldValue.(type) {
+	case nil:
+		return indexSet
+	case string:
+		if fieldValue == "" {
+			return indexSet
+		}
+	}
+
 	termQuery := elastic.NewTermQuery(field, fieldValue)
-	indexSet.esService = indexSet.data().Search().Index(indexSet.indexName).Query(termQuery)
+	indexSet.searchService = indexSet.data().Query(termQuery)
 	return indexSet
 }
 
@@ -176,7 +196,7 @@ func (indexSet *IndexSet[Table]) Insert(po Table) error {
 			break
 		}
 	}
-	_, err = indexSet.data().Index().Index(indexSet.indexName).Id(Id).BodyJson(po).Do(ctx)
+	_, err = indexSet.getClient().Index().Index(indexSet.indexName).Id(Id).BodyJson(po).Do(ctx)
 	return err
 }
 
@@ -186,7 +206,7 @@ func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 		indexSet.WhenNotExistsAddIndex(array[0])
 	}
 	//批量添加
-	bulkRequest := indexSet.data().Bulk().Index(indexSet.indexName)
+	bulkRequest := indexSet.getClient().Bulk().Index(indexSet.indexName)
 	for _, table := range array {
 		poValueOf := reflect.ValueOf(table)
 		Id := "0"
@@ -212,7 +232,7 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 		indexSet.WhenNotExistsAddIndex(list.Index(0))
 	}
 	//批量添加
-	bulkRequest := indexSet.data().Bulk().Index(indexSet.indexName)
+	bulkRequest := indexSet.getClient().Bulk().Index(indexSet.indexName)
 	for i := 0; i < list.Count(); i++ {
 		poValueOf := reflect.ValueOf(list.Index(i))
 		Id := "0"
@@ -234,10 +254,7 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
-	if indexSet.esService == nil {
-		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
-	}
-	resp, _ := indexSet.esService.From(0).Size(10000).Do(ctx)
+	resp, _ := indexSet.data().From(0).Size(10000).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
@@ -251,10 +268,7 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 
 // ToPageList 转成分页集合
 func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.List[Table] {
-	if indexSet.esService == nil {
-		indexSet.esService = indexSet.data().Search().Index(indexSet.indexName)
-	}
-	resp, _ := indexSet.esService.From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	resp, _ := indexSet.data().From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx) //
 	if resp == nil {
 		return collections.NewList[Table]()
 	}
