@@ -17,6 +17,7 @@ type IndexSet[Table any] struct {
 	aliasesName     string
 	client          *elastic.Client
 	searchService   *elastic.SearchService
+	queryArray      []elastic.Query
 	err             error
 	ShardsCount     int
 	ReplicasCount   int
@@ -176,9 +177,8 @@ func (indexSet *IndexSet[Table]) Where(field string, fieldValue any) *IndexSet[T
 			return indexSet
 		}
 	}
-
 	termQuery := elastic.NewTermQuery(field, fieldValue)
-	indexSet.data().Query(termQuery)
+	indexSet.queryArray = append(indexSet.queryArray, termQuery)
 	return indexSet
 }
 
@@ -234,7 +234,11 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
-	resp, _ := indexSet.data().From(0).Size(10000).Do(ctx)
+	boolQuery := elastic.NewBoolQuery().Must()
+	if len(indexSet.queryArray) > 0 {
+		boolQuery.Must(indexSet.queryArray...)
+	}
+	resp, _ := indexSet.data().Query(boolQuery).From(0).Size(10000).Do(ctx)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
@@ -248,7 +252,11 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 
 // ToPageList 转成分页集合
 func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.PageList[Table] {
-	resp, _ := indexSet.data().From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	boolQuery := elastic.NewBoolQuery().Must()
+	if len(indexSet.queryArray) > 0 {
+		boolQuery.Must(indexSet.queryArray...)
+	}
+	resp, _ := indexSet.data().Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
 	lst := collections.NewList[Table]()
 
 	if resp == nil {
