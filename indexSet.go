@@ -178,7 +178,7 @@ func (indexSet *IndexSet[Table]) Where(field string, fieldValue any) *IndexSet[T
 	}
 
 	termQuery := elastic.NewTermQuery(field, fieldValue)
-	indexSet.searchService = indexSet.data().Query(termQuery)
+	indexSet.data().Query(termQuery)
 	return indexSet
 }
 
@@ -207,34 +207,8 @@ func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 	}
 	//批量添加
 	bulkRequest := indexSet.getClient().Bulk().Index(indexSet.indexName)
-	for _, table := range array {
-		poValueOf := reflect.ValueOf(table)
-		Id := "0"
-		for i := 0; i < poValueOf.NumField(); i++ {
-			data := poValueOf.Type().Field(i).Tag.Get("es")
-			if strings.HasPrefix(data, "primaryKey") {
-				val := poValueOf.Field(i).Int()
-				Id = strconv.FormatInt(val, 10)
-				break
-			}
-		}
-		req := elastic.NewBulkIndexRequest().Doc(table)
-		req.Id(Id) //指定id
-		bulkRequest.Add(req)
-	}
-	_, err := bulkRequest.Do(ctx)
-	return err
-}
-
-// InsertList 插入列表形式
-func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error {
-	if list.Count() > 0 {
-		indexSet.WhenNotExistsAddIndex(list.Index(0))
-	}
-	//批量添加
-	bulkRequest := indexSet.getClient().Bulk().Index(indexSet.indexName)
-	for i := 0; i < list.Count(); i++ {
-		poValueOf := reflect.ValueOf(list.Index(i))
+	for i := 0; i < len(array); i++ {
+		poValueOf := reflect.ValueOf(array[i])
 		var id int64
 		for i := 0; i < poValueOf.NumField(); i++ {
 			data := poValueOf.Type().Field(i).Tag.Get("es")
@@ -243,7 +217,7 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 				break
 			}
 		}
-		req := elastic.NewBulkIndexRequest().Doc(list.Index(i))
+		req := elastic.NewBulkIndexRequest().Doc(array[i])
 		if id > 0 {
 			req.Id(strconv.FormatInt(id, 10)) //指定id
 		}
@@ -251,6 +225,11 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 	}
 	_, err := bulkRequest.Do(ctx)
 	return err
+}
+
+// InsertList 插入列表形式
+func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error {
+	return indexSet.InsertArray(list.ToArray())
 }
 
 // ToList 转换List集合
