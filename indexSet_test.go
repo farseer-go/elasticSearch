@@ -121,8 +121,8 @@ func TestIndexSet_Where(t *testing.T) {
 	context := NewContext[TestEsContext]("log_es")
 	po := UserPO{Name: "小王", Age: 30, Id: 14}
 	_ = context.User.Insert(po)
-	list := context.User.Where("Age", "30").ToList()
-	assert.Equal(t, list.First().Name, "小王")
+	list2 := context.User.Where("Age", "30").Where("Id", 14).ToList()
+	assert.Equal(t, list2.First().Name, "小王")
 }
 func TestIndexSet_DelIndex(t *testing.T) {
 	configure.SetDefault("ElasticSearch.log_es", "Server=http://localhost:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
