@@ -3,7 +3,7 @@ module github.com/farseer-go/elasticSearch
 go 1.19
 
 require (
-	github.com/farseer-go/collections v0.2.1
+	github.com/farseer-go/collections v0.3.0
 	github.com/farseer-go/fs v0.5.0
 	github.com/olivere/elastic/v7 v7.0.32
 )
