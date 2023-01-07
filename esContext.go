@@ -19,7 +19,7 @@ func initConfig(esName string) *ESContext {
 	if configString == "" {
 		panic("[farseer.yaml]找不到相应的配置：ElasticSearch." + esName)
 	}
-	esConfig := configure.ParseConfig[elasticConfig](configString)
+	esConfig := configure.ParseString[elasticConfig](configString)
 	esContext := &ESContext{
 		esConfig: &esConfig,
 	}

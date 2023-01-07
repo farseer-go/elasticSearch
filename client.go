@@ -21,7 +21,7 @@ func NewClient(esName string) *Client {
 	if configString == "" {
 		panic("[farseer.yaml]找不到相应的配置：ElasticSearch." + esName)
 	}
-	elasticConfig := configure.ParseConfig[elasticConfig](configString)
+	elasticConfig := configure.ParseString[elasticConfig](configString)
 	es, err := elastic.NewClient(
 		elastic.SetURL(elasticConfig.Server),
 		elastic.SetBasicAuth(elasticConfig.Username, elasticConfig.Password),
