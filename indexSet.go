@@ -23,7 +23,7 @@ type IndexSet[Table any] struct {
 	ReplicasCount   int
 	RefreshInterval int
 }
-type mi map[string]interface{}
+type mi map[string]any
 
 // Init 在反射的时候会调用此方法
 func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string, indexAliases string, shardsCount int, replicasCount int, refreshInterval int) {
@@ -88,7 +88,7 @@ func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
 // CreateIndex 创建索引
 func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	//表结构处理
-	miTable := make(map[string]interface{})
+	miTable := make(map[string]any)
 	poValueOf := reflect.ValueOf(po)
 	poTypeOf := reflect.TypeOf(po)
 	for i := 0; i < poValueOf.NumField(); i++ {

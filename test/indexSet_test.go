@@ -13,7 +13,7 @@ import (
 func TestPOEsType(t *testing.T) {
 	po := UserPO{Age: 20, Name: "小小", Id: 100}
 	//表结构处理
-	miTable := make(map[string]interface{}, 0)
+	miTable := make(map[string]any, 0)
 	poValueOf := reflect.ValueOf(po)
 	poTypeOf := reflect.TypeOf(po)
 	for i := 0; i < poValueOf.NumField(); i++ {

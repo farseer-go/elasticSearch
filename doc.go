@@ -9,8 +9,8 @@ type esDoc struct {
 }
 
 // InsertDocToIndex 插入文档
-func (esDoc *esDoc) InsertDocToIndex(index string, doc interface{}) (bool, string, error) {
-	resp, err := esDoc.Es.Index().Index(index).BodyJson(doc.(map[string]interface{})).Do(ctx)
+func (esDoc *esDoc) InsertDocToIndex(index string, doc any) (bool, string, error) {
+	resp, err := esDoc.Es.Index().Index(index).BodyJson(doc.(map[string]any)).Do(ctx)
 	if err != nil {
 		return false, resp.Result, err
 	}
@@ -18,7 +18,7 @@ func (esDoc *esDoc) InsertDocToIndex(index string, doc interface{}) (bool, strin
 }
 
 // CreateOrUpdateDoc 创建或者更新文档，注意：注意用update更新个别字段时，请用map结构，struct会更新全部的。
-func (esDoc *esDoc) CreateOrUpdateDoc(index string, id string, doc interface{}) (bool, string, error) {
+func (esDoc *esDoc) CreateOrUpdateDoc(index string, id string, doc any) (bool, string, error) {
 	resp, err := esDoc.Es.Update().Index(index).Id(id).Doc(doc).DocAsUpsert(true).Do(ctx)
 	if err != nil {
 		return false, resp.Result, err
@@ -27,7 +27,7 @@ func (esDoc *esDoc) CreateOrUpdateDoc(index string, id string, doc interface{}) 
 }
 
 // BulkInsertDocs 批量插入
-func (esDoc *esDoc) BulkInsertDocs(index string, docs []interface{}) (bool, error) {
+func (esDoc *esDoc) BulkInsertDocs(index string, docs []any) (bool, error) {
 	length := len(docs)
 	bulkReq := esDoc.Es.Bulk()
 	for i := 0; i < length; i++ {
@@ -52,7 +52,7 @@ func (esDoc *esDoc) DelDoc(index string, id string) (bool, string, error) {
 }
 
 // GetDoc 获取单个文档
-func (esDoc *esDoc) GetDoc(index string, id string) (interface{}, error) {
+func (esDoc *esDoc) GetDoc(index string, id string) (any, error) {
 	resp, err := esDoc.Es.Get().Index(index).Id(id).Do(ctx)
 	if err != nil {
 		return nil, err

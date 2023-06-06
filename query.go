@@ -11,7 +11,7 @@ type esQuery struct {
 }
 
 // MustTermOrTermsQuery 精确字段查询-个值或数组
-func (esQuery *esQuery) MustTermOrTermsQuery(index string, name string, val interface{}) ([]*elastic.SearchHit, error) {
+func (esQuery *esQuery) MustTermOrTermsQuery(index string, name string, val any) ([]*elastic.SearchHit, error) {
 	query := elastic.NewBoolQuery()
 	if reflect.TypeOf(val).Kind() == reflect.Slice {
 		query.Must(elastic.NewTermsQuery(name, val))
@@ -23,7 +23,7 @@ func (esQuery *esQuery) MustTermOrTermsQuery(index string, name string, val inte
 }
 
 // MustRangeQuery 范围查询
-func (esQuery *esQuery) MustRangeQuery(index string, name string, lte interface{}, gte interface{}) ([]*elastic.SearchHit, error) {
+func (esQuery *esQuery) MustRangeQuery(index string, name string, lte any, gte any) ([]*elastic.SearchHit, error) {
 	query := elastic.NewBoolQuery()
 	query.Must(elastic.NewRangeQuery(name).Gte(gte).Lte(lte))
 	resp, err := esQuery.Es.Search().Index(index).Query(query).Size(10000).Do(ctx)
@@ -37,7 +37,7 @@ func (esQuery *esQuery) SizeQuery(index string, size int) ([]*elastic.SearchHit,
 }
 
 // SourceQuery 指定返回字段
-func (esQuery *esQuery) SourceQuery(index string, source interface{}) ([]*elastic.SearchHit, error) {
+func (esQuery *esQuery) SourceQuery(index string, source any) ([]*elastic.SearchHit, error) {
 	resp, err := esQuery.Es.Search().Index(index).Source(source).Size(10000).Do(ctx)
 	return resp.Hits.Hits, err
 }
@@ -49,7 +49,7 @@ func (esQuery *esQuery) SortQuery(index string, field string, ascending bool) ([
 }
 
 // AggregationTerms 简单桶聚合
-func (esQuery *esQuery) AggregationTerms(index string, name string, field string) (interface{}, error) {
+func (esQuery *esQuery) AggregationTerms(index string, name string, field string) (any, error) {
 	agg := elastic.NewTermsAggregation().Field(field).Size(10000)
 	resp, err := esQuery.Es.Search().
 		Index(index).
@@ -70,7 +70,7 @@ func (esQuery *esQuery) AggregationTerms(index string, name string, field string
 }
 
 // AggregationTermsWithSubAgg 多级聚合查询
-func (esQuery *esQuery) AggregationTermsWithSubAgg(index string, name1 string, field1 string, name2 string, field2 string) (interface{}, error) {
+func (esQuery *esQuery) AggregationTermsWithSubAgg(index string, name1 string, field1 string, name2 string, field2 string) (any, error) {
 	agg := elastic.NewTermsAggregation().Field(field1).Size(10000)
 	resp, err := esQuery.Es.Search().
 		Index(index).
@@ -84,7 +84,7 @@ func (esQuery *esQuery) AggregationTermsWithSubAgg(index string, name1 string, f
 	if !ok {
 		return nil, nil
 	}
-	fieldsMap := make(map[string][]interface{})
+	fieldsMap := make(map[string][]any)
 	for i := range ret.Buckets {
 		k := ret.Buckets[i].Key.(string)
 		// subAggregation
@@ -100,14 +100,14 @@ func (esQuery *esQuery) AggregationTermsWithSubAgg(index string, name1 string, f
 		}
 		ret2, _ := resp.Aggregations.Terms(name2)
 		for j := range ret2.Buckets {
-			fieldsMap[k] = append(fieldsMap[k], ret2.Buckets[j].Key.(interface{}))
+			fieldsMap[k] = append(fieldsMap[k], ret2.Buckets[j].Key.(any))
 		}
 	}
 	return fieldsMap, nil
 }
 
 // AggSub 两级terms usage
-func (esQuery *esQuery) AggSub(index string, field1 string, field2 string) (interface{}, error) {
+func (esQuery *esQuery) AggSub(index string, field1 string, field2 string) (any, error) {
 	resp, err := esQuery.Es.Search(index).
 		Aggregation(
 			"mainAgg",
@@ -127,7 +127,7 @@ func (esQuery *esQuery) AggSub(index string, field1 string, field2 string) (inte
 }
 
 // AggregationMax 聚合stats-max
-func (esQuery *esQuery) AggregationMax(index string, field string) (interface{}, error) {
+func (esQuery *esQuery) AggregationMax(index string, field string) (any, error) {
 	agg := elastic.NewMaxAggregation().Field(field)
 	resp, err := esQuery.Es.Search().
 		Index(index).

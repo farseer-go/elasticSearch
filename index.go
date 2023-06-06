@@ -15,12 +15,12 @@ func (esIndex *esIndex) IsIndexExists(index string) (bool, error) {
 }
 
 // GetIndexMappings 获取索引mapping
-func (esIndex *esIndex) GetIndexMappings(indices ...string) (map[string]interface{}, error) {
+func (esIndex *esIndex) GetIndexMappings(indices ...string) (map[string]any, error) {
 	return esIndex.Es.GetMapping().Index(indices...).Do(ctx)
 }
 
 // PutIndexMapping 设置mapping
-func (esIndex *esIndex) PutIndexMapping(index string, mapping interface{}) (bool, error) {
+func (esIndex *esIndex) PutIndexMapping(index string, mapping any) (bool, error) {
 	var putResp *elastic.PutMappingResponse
 	var err error
 	switch reflect.TypeOf(mapping).Kind() {
@@ -29,7 +29,7 @@ func (esIndex *esIndex) PutIndexMapping(index string, mapping interface{}) (bool
 			BodyString(mapping.(string)).Do(ctx)
 	case reflect.Map:
 		putResp, err = esIndex.Es.PutMapping().Index(index).IgnoreUnavailable(true).
-			BodyJson(mapping.(map[string]interface{})).Do(ctx)
+			BodyJson(mapping.(map[string]any)).Do(ctx)
 	}
 	if err != nil {
 		return false, err
@@ -41,8 +41,8 @@ func (esIndex *esIndex) PutIndexMapping(index string, mapping interface{}) (bool
 }
 
 // CreateIndex 创建索引并设置值
-func (esIndex *esIndex) CreateIndex(index string, body interface{}) (bool, error) {
-	resp, err := esIndex.Es.CreateIndex(index).BodyJson(body.(map[string]interface{})).Do(ctx)
+func (esIndex *esIndex) CreateIndex(index string, body any) (bool, error) {
+	resp, err := esIndex.Es.CreateIndex(index).BodyJson(body.(map[string]any)).Do(ctx)
 	if err != nil {
 		return false, err
 	}
