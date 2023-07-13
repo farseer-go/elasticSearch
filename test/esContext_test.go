@@ -29,7 +29,7 @@ func TestNewContext(t *testing.T) {
 	configure.SetDefault("ElasticSearch.test", "Server=http://es:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := elasticSearch.NewContext[TestEsContext]("test")
 	context.User.SetIndexName("user_index_01", "user_index_alis_01")
-	assert.Equal(t, "user_index_01", context.User.indexName)
+	assert.Equal(t, "user_index_01", context.User.GetIndexName())
 }
 
 func TestInitContext(t *testing.T) {
@@ -55,6 +55,6 @@ func TestInitContext(t *testing.T) {
 	var context TestEsContext
 	elasticSearch.InitContext(&context, "test")
 	context.User.SetIndexName("user_index_01", "user_index_alis_01")
-	assert.Equal(t, "user_index_01", context.User.indexName)
+	assert.Equal(t, "user_index_01", context.User.GetIndexName())
 
 }
