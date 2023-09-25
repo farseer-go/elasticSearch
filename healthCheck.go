@@ -1,6 +1,7 @@
 package elasticSearch
 
 import (
+	"fmt"
 	"github.com/farseer-go/fs"
 	"github.com/farseer-go/fs/flog"
 )
@@ -16,8 +17,9 @@ func (c *healthCheck) Check() (string, error) {
 	flog.ErrorIfExists(err)
 	for _, catHealthResponseRow := range healthResponse {
 		if catHealthResponseRow.Status != "green" {
-			flog.Warningf("es name=%s，%s 有节点不健康：%s", c.name, catHealthResponseRow.Cluster, catHealthResponseRow.Status)
+			flog.Warningf("ElasticSearch name=%s，%s 有节点不健康：%s", c.name, catHealthResponseRow.Cluster, catHealthResponseRow.Status)
 		}
 	}
-	return "ElasticSearch." + c.name, err
+	do, err := c.Original().ClusterState().Do(fs.Context)
+	return fmt.Sprintf("ElasticSearch.%s => %d个节点", c.name, len(do.Nodes)), err
 }
