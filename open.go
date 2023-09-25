@@ -1,9 +1,11 @@
 package elasticSearch
 
-import "github.com/olivere/elastic/v7"
+import (
+	"github.com/olivere/elastic/v7"
+)
 
 // 连接es
-func open(esConfig *esConfig) *elastic.Client {
+func open(esConfig *EsConfig) *elastic.Client {
 	es, err := elastic.NewClient(
 		elastic.SetURL(esConfig.Server),
 		elastic.SetBasicAuth(esConfig.Username, esConfig.Password),

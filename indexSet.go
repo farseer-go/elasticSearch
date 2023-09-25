@@ -3,6 +3,7 @@ package elasticSearch
 import (
 	"encoding/json"
 	"github.com/farseer-go/collections"
+	"github.com/farseer-go/fs"
 	"github.com/farseer-go/fs/flog"
 	"github.com/olivere/elastic/v7"
 	"reflect"
@@ -12,7 +13,7 @@ import (
 
 // IndexSet 表操作
 type IndexSet[Table any] struct {
-	esContext       *ESContext
+	esContext       *internalContext
 	indexName       string
 	aliasesName     string
 	client          *elastic.Client
@@ -26,7 +27,7 @@ type IndexSet[Table any] struct {
 type mi map[string]any
 
 // Init 在反射的时候会调用此方法
-func (indexSet *IndexSet[Table]) Init(esContext *ESContext, indexName string, indexAliases string, shardsCount int, replicasCount int, refreshInterval int) {
+func (indexSet *IndexSet[Table]) Init(esContext *internalContext, indexName string, indexAliases string, shardsCount int, replicasCount int, refreshInterval int) {
 	indexSet.esContext = esContext
 	indexSet.ShardsCount = shardsCount
 	indexSet.ReplicasCount = replicasCount
@@ -63,14 +64,14 @@ func (indexSet *IndexSet[Table]) getClient() *elastic.Client {
 
 // SetAliasesName 设置别名
 func (indexSet *IndexSet[Table]) SetAliasesName(aliasesName string) error {
-	_, err := indexSet.getClient().Alias().Add(indexSet.indexName, aliasesName).Do(ctx)
+	_, err := indexSet.getClient().Alias().Add(indexSet.indexName, aliasesName).Do(fs.Context)
 	return err
 }
 
 // WhenNotExistsAddIndex 当不存在的时候创建索引
 func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
 	indexSet.data()
-	do, _ := indexSet.client.IndexExists(indexSet.indexName).Do(ctx)
+	do, _ := indexSet.client.IndexExists(indexSet.indexName).Do(fs.Context)
 	if !do {
 		indexSet.CreateIndex(po)
 	}
@@ -117,7 +118,7 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	}
 	marshal, _ := json.Marshal(mapping)
 	//flog.Println("json:", string(marshal))
-	_, err := indexSet.getClient().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(ctx)
+	_, err := indexSet.getClient().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(fs.Context)
 	flog.Println("createindex:", err)
 
 	//设置别名
@@ -148,13 +149,13 @@ func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
 
 // DelData 删除指定Id数据
 func (indexSet *IndexSet[Table]) DelData(id string) error {
-	_, err := indexSet.getClient().Delete().Index(indexSet.indexName).Id(id).Do(ctx)
+	_, err := indexSet.getClient().Delete().Index(indexSet.indexName).Id(id).Do(fs.Context)
 	return err
 }
 
 // DelIndex 删除指定index索引数据
 func (indexSet *IndexSet[Table]) DelIndex(indices ...string) error {
-	_, err := indexSet.getClient().DeleteIndex(indices...).Do(ctx)
+	_, err := indexSet.getClient().DeleteIndex(indices...).Do(fs.Context)
 	return err
 }
 
@@ -187,7 +188,7 @@ func (indexSet *IndexSet[Table]) Insert(po Table) error {
 			break
 		}
 	}
-	_, err = indexSet.getClient().Index().Index(indexSet.indexName).Id(Id).BodyJson(po).Do(ctx)
+	_, err = indexSet.getClient().Index().Index(indexSet.indexName).Id(Id).BodyJson(po).Do(fs.Context)
 	return err
 }
 
@@ -214,7 +215,7 @@ func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 		}
 		bulkRequest.Add(req)
 	}
-	_, err := bulkRequest.Do(ctx)
+	_, err := bulkRequest.Do(fs.Context)
 	return err
 }
 
@@ -229,7 +230,7 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	if len(indexSet.queryArray) > 0 {
 		boolQuery.Must(indexSet.queryArray...)
 	}
-	resp, _ := indexSet.data().Query(boolQuery).From(0).Size(10000).Do(ctx)
+	resp, _ := indexSet.data().Query(boolQuery).From(0).Size(10000).Do(fs.Context)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
@@ -247,7 +248,7 @@ func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collect
 	if len(indexSet.queryArray) > 0 {
 		boolQuery.Must(indexSet.queryArray...)
 	}
-	resp, _ := indexSet.data().Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(ctx)
+	resp, _ := indexSet.data().Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(fs.Context)
 	lst := collections.NewList[Table]()
 
 	if resp == nil {

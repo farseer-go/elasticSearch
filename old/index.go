@@ -1,4 +1,4 @@
-package elasticSearch
+package old
 
 import (
 	"github.com/olivere/elastic/v7"

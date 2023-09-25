@@ -2,8 +2,6 @@ package elasticSearch
 
 import (
 	"github.com/farseer-go/fs/configure"
-	"github.com/farseer-go/fs/container"
-	"github.com/farseer-go/fs/core"
 	"github.com/farseer-go/fs/modules"
 )
 
@@ -21,7 +19,6 @@ func (module Module) Initialize() {
 		if configString == "" {
 			panic("[farseer.yaml]ElasticSearch." + name + "，没有正确配置")
 		}
-		// 注册健康检查
-		container.RegisterInstance[core.IHealthCheck](&healthCheck{name: name}, "es_"+name)
+		RegisterInternalContext(name, configString)
 	}
 }

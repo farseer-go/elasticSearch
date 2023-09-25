@@ -1,34 +1,25 @@
 package elasticSearch
 
 import (
-	"github.com/farseer-go/fs/configure"
+	"github.com/farseer-go/fs/container"
 	"github.com/farseer-go/fs/types"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type ESContext struct {
-	esConfig *esConfig
-}
+// IEsContext ES上下文
+type IEsContext interface{}
 
-// initConfig 初始化配置文件
-func initConfig(esName string) *ESContext {
-	configString := configure.GetString("ElasticSearch." + esName)
-	if configString == "" {
-		panic("[farseer.yaml]找不到相应的配置：ElasticSearch." + esName)
-	}
-	esConfig := configure.ParseString[esConfig](configString)
-	esContext := &ESContext{
-		esConfig: &esConfig,
-	}
-	return esContext
+type ESContext struct {
+	esConfig *EsConfig
 }
 
 // NewContext 数据库上下文初始化
 // esName：数据库配置名称
-func NewContext[TEsContext any](esName string) *TEsContext {
+func NewContext[TEsContext IEsContext](esName string) *TEsContext {
 	var context TEsContext
 	InitContext(&context, esName)
 	return &context
@@ -36,66 +27,72 @@ func NewContext[TEsContext any](esName string) *TEsContext {
 
 // InitContext 数据库上下文初始化
 // esName：数据库配置名称
-func InitContext[TEsContext any](esContext *TEsContext, esName string) {
+func InitContext[TEsContext IEsContext](esContext *TEsContext, esName string) {
 	if esName == "" {
 		panic("esName入参必须设置有效的值")
 	}
-	dbConfig := initConfig(esName) // 嵌入类型
-	//var dbName string       // 数据库配置名称
+	context := container.Resolve[IInternalContext](esName)
+	if context == nil {
+		log.Panicf("初始化TEsContext失败，请确认./farseer.yaml配置文件中的ElasticSearch.%s是否正确", esName)
+	}
+
+	internalContextIns := context.(*internalContext)
+	internalContextType := reflect.ValueOf(internalContextIns)
 	contextValueOf := reflect.ValueOf(esContext).Elem()
 
+	// 遍历上下文中的IndexSet字段类型
 	for i := 0; i < contextValueOf.NumField(); i++ {
 		field := contextValueOf.Field(i)
-		if !field.CanSet() {
-			continue
-		}
-
-		_, isIndexSet := types.IsEsIndexSet(field)
-		if !isIndexSet {
-			continue
-		}
-
-		//表名
-		var indexName string
-		//别名
-		var aliasesName string
-		//分片
-		var shardsCount int
-		//复制
-		var replicasCount int
-		//刷新时间
-		var refreshInterval int
-		data := contextValueOf.Type().Field(i).Tag.Get("es")
-		array := strings.Split(data, ";")
-		for _, s := range array {
-			if strings.HasPrefix(s, "index=") {
-				indexName = s[len("index="):]
-				indexName = ReplaceTime(indexName)
-			}
-			if strings.HasPrefix(s, "alias=") {
-				aliasesName = s[len("alias="):]
-				aliasesName = ReplaceTime(aliasesName)
-			}
-			if strings.HasPrefix(s, "shards=") {
-				shardsCount, _ = strconv.Atoi(s[len("shards="):])
-			}
-			if strings.HasPrefix(s, "replicas=") {
-				replicasCount, _ = strconv.Atoi(s[len("replicas="):])
-			}
-			if strings.HasPrefix(s, "refresh=") {
-				refreshInterval, _ = strconv.Atoi(s[len("refresh="):])
+		if field.CanSet() {
+			_, isIndexSet := types.IsEsIndexSet(field)
+			if isIndexSet {
+				// 获取tag
+				indexName, aliasesName, shardsCount, replicasCount, refreshInterval := getTag(contextValueOf, i)
+				if indexName == "" {
+					continue
+				}
+				if aliasesName == "" {
+					aliasesName = indexName
+				}
+				// 再取IndexSet的子属性，并设置值
+				field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(internalContextIns), reflect.ValueOf(indexName), reflect.ValueOf(aliasesName), reflect.ValueOf(shardsCount), reflect.ValueOf(replicasCount), reflect.ValueOf(refreshInterval)})
+			} else if field.Type().String() == "elasticSearch.IInternalContext" {
+				field.Set(internalContextType)
 			}
 		}
-		if indexName == "" {
-			continue
-		}
-		if aliasesName == "" {
-			aliasesName = indexName
-		}
-		// 再取IndexSet的子属性，并设置值
-		field.Addr().MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(dbConfig), reflect.ValueOf(indexName), reflect.ValueOf(aliasesName), reflect.ValueOf(shardsCount), reflect.ValueOf(replicasCount), reflect.ValueOf(refreshInterval)})
-
 	}
+}
+
+func getTag(contextValueOf reflect.Value, fieldIndex int) (string, string, int, int, int) {
+	//表名
+	var indexName string
+	//别名
+	var aliasesName string
+	//分片
+	var shardsCount int
+	//复制
+	var replicasCount int
+	//刷新时间
+	var refreshInterval int
+
+	data := contextValueOf.Type().Field(fieldIndex).Tag.Get("es")
+	for _, s := range strings.Split(data, ";") {
+		switch strings.Split(s, "=")[0] {
+		case "index":
+			indexName = s[len("index="):]
+			indexName = ReplaceTime(indexName)
+		case "alias":
+			aliasesName = s[len("alias="):]
+			aliasesName = ReplaceTime(aliasesName)
+		case "shards":
+			shardsCount, _ = strconv.Atoi(s[len("shards="):])
+		case "replicas":
+			replicasCount, _ = strconv.Atoi(s[len("replicas="):])
+		case "refresh":
+			refreshInterval, _ = strconv.Atoi(s[len("refresh="):])
+		}
+	}
+	return indexName, aliasesName, shardsCount, replicasCount, refreshInterval
 }
 
 // ReplaceTime 替换索引内的时间
