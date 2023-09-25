@@ -10,7 +10,7 @@ import (
 )
 
 type ESContext struct {
-	esConfig *elasticConfig
+	esConfig *esConfig
 }
 
 // initConfig 初始化配置文件
@@ -19,7 +19,7 @@ func initConfig(esName string) *ESContext {
 	if configString == "" {
 		panic("[farseer.yaml]找不到相应的配置：ElasticSearch." + esName)
 	}
-	esConfig := configure.ParseString[elasticConfig](configString)
+	esConfig := configure.ParseString[esConfig](configString)
 	esContext := &ESContext{
 		esConfig: &esConfig,
 	}
