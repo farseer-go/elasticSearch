@@ -54,16 +54,7 @@ func (indexSet *IndexSet[Table]) data() *elastic.SearchService {
 // 初始化client
 func (indexSet *IndexSet[Table]) getClient() *elastic.Client {
 	if indexSet.client == nil {
-		es, _ := elastic.NewClient(
-			elastic.SetURL(indexSet.esContext.esConfig.Server),
-			elastic.SetBasicAuth(indexSet.esContext.esConfig.Username, indexSet.esContext.esConfig.Password),
-			elastic.SetSniff(false), //非集群下，关闭嗅探机制
-		)
-
-		if es == nil {
-			panic("elasticsearch初始化失败")
-		}
-
+		es := open(indexSet.esContext.esConfig)
 		indexSet.client = es
 		indexSet.searchService = es.Search().Index(indexSet.aliasesName)
 	}
