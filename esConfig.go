@@ -1,7 +1,7 @@
 package elasticSearch
 
 // elasticSearch配置结构
-type elasticConfig struct {
+type EsConfig struct {
 	Server          string
 	Username        string
 	Password        string
