@@ -174,6 +174,30 @@ func (indexSet *IndexSet[Table]) Where(field string, fieldValue any) *IndexSet[T
 	return indexSet
 }
 
+// WhereRange 范围查询
+func (indexSet *IndexSet[Table]) WhereRange(field string, startValue any, endValue any) *IndexSet[Table] {
+	switch startValue.(type) {
+	case nil:
+		return indexSet
+	case string:
+		if startValue == "" {
+			return indexSet
+		}
+	}
+	switch endValue.(type) {
+	case nil:
+		return indexSet
+	case string:
+		if endValue == "" {
+			return indexSet
+		}
+	}
+	// 例2 等价表达式： id >= 1 and id < 10
+	rangeQuery := elastic.NewRangeQuery(field).Gte(startValue).Lte(endValue)
+	indexSet.queryArray = append(indexSet.queryArray, rangeQuery)
+	return indexSet
+}
+
 // Insert 插入数据
 func (indexSet *IndexSet[Table]) Insert(po Table) error {
 	indexSet.WhenNotExistsAddIndex(po)
