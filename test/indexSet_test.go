@@ -131,7 +131,7 @@ func TestIndexSet_DelIndex(t *testing.T) {
 	context.User.SetIndexName("user_111", "user_alis_111")
 	po := UserPO{Name: "小强", Age: 10, Id: 12}
 	_ = context.User.Insert(po)
-	err := context.User.DelIndex(context.User.GetIndexName())
+	err := context.User.DeleteIndex(context.User.GetIndexName())
 	assert.Equal(t, err, nil)
 }
 func TestIndexSet_DelData(t *testing.T) {
@@ -139,7 +139,7 @@ func TestIndexSet_DelData(t *testing.T) {
 	context := elasticSearch.NewContext[TestEsContext]("log_es")
 	po := UserPO{Name: "小强", Age: 10, Id: 888}
 	_ = context.User.Insert(po)
-	err := context.User.DelData("888")
+	err := context.User.Delete("888")
 	assert.Equal(t, err, nil)
 }
 func TestIndexSet_SetAliasesName(t *testing.T) {

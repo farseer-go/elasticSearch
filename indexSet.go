@@ -5,6 +5,7 @@ import (
 	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs"
 	"github.com/farseer-go/fs/flog"
+	"github.com/farseer-go/linkTrace"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 	"strconv"
@@ -79,6 +80,10 @@ func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
 
 // CreateIndex 创建索引
 func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
+	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("CreateIndex", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
 	//表结构处理
 	miTable := make(map[string]any)
 	poValueOf := reflect.ValueOf(po)
@@ -118,7 +123,7 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	}
 	marshal, _ := json.Marshal(mapping)
 	//flog.Println("json:", string(marshal))
-	_, err := indexSet.getClient().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(fs.Context)
+	_, err = indexSet.getClient().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(fs.Context)
 	flog.Println("createindex:", err)
 
 	//设置别名
@@ -147,15 +152,23 @@ func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
 	return indexSet
 }
 
-// DelData 删除指定Id数据
-func (indexSet *IndexSet[Table]) DelData(id string) error {
-	_, err := indexSet.getClient().Delete().Index(indexSet.indexName).Id(id).Do(fs.Context)
+// Delete 删除指定Id数据
+func (indexSet *IndexSet[Table]) Delete(id string) error {
+	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("Delete", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
+	_, err = indexSet.getClient().Delete().Index(indexSet.indexName).Id(id).Do(fs.Context)
 	return err
 }
 
-// DelIndex 删除指定index索引数据
-func (indexSet *IndexSet[Table]) DelIndex(indices ...string) error {
-	_, err := indexSet.getClient().DeleteIndex(indices...).Do(fs.Context)
+// DeleteIndex 删除指定index索引数据
+func (indexSet *IndexSet[Table]) DeleteIndex(indices ...string) error {
+	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("DeleteIndex", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
+	_, err = indexSet.getClient().DeleteIndex(indices...).Do(fs.Context)
 	return err
 }
 
@@ -200,8 +213,11 @@ func (indexSet *IndexSet[Table]) WhereRange(field string, startValue any, endVal
 
 // Insert 插入数据
 func (indexSet *IndexSet[Table]) Insert(po Table) error {
-	indexSet.WhenNotExistsAddIndex(po)
 	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("Insert", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
+	indexSet.WhenNotExistsAddIndex(po)
 	poValueOf := reflect.ValueOf(po)
 	Id := "0"
 	for i := 0; i < poValueOf.NumField(); i++ {
@@ -218,6 +234,10 @@ func (indexSet *IndexSet[Table]) Insert(po Table) error {
 
 // InsertArray 数组的形式插入
 func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
+	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("InsertArray", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
 	if len(array) > 0 {
 		indexSet.WhenNotExistsAddIndex(array[0])
 	}
@@ -239,7 +259,7 @@ func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 		}
 		bulkRequest.Add(req)
 	}
-	_, err := bulkRequest.Do(fs.Context)
+	_, err = bulkRequest.Do(fs.Context)
 	return err
 }
 
@@ -250,11 +270,16 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
+	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("ToList", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
 	boolQuery := elastic.NewBoolQuery().Must()
 	if len(indexSet.queryArray) > 0 {
 		boolQuery.Must(indexSet.queryArray...)
 	}
-	resp, _ := indexSet.data().Query(boolQuery).From(0).Size(10000).Do(fs.Context)
+	var resp *elastic.SearchResult
+	resp, err = indexSet.data().Query(boolQuery).From(0).Size(10000).Do(fs.Context)
 	hitArray := resp.Hits.Hits
 	var lst []Table
 	for _, hit := range hitArray {
@@ -268,11 +293,16 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 
 // ToPageList 转成分页集合
 func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.PageList[Table] {
+	var err error
+	traceDetailEs := linkTrace.TraceElasticsearch("ToPageList", indexSet.indexName, indexSet.aliasesName)
+	defer func() { traceDetailEs.End(err) }()
+
 	boolQuery := elastic.NewBoolQuery().Must()
 	if len(indexSet.queryArray) > 0 {
 		boolQuery.Must(indexSet.queryArray...)
 	}
-	resp, _ := indexSet.data().Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(fs.Context)
+	var resp *elastic.SearchResult
+	resp, err = indexSet.data().Query(boolQuery).From((pageIndex - 1) * pageSize).Size(pageSize).Pretty(true).Do(fs.Context)
 	lst := collections.NewList[Table]()
 
 	if resp == nil {
