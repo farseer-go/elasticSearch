@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs"
+	"github.com/farseer-go/fs/container"
 	"github.com/farseer-go/fs/flog"
-	"github.com/farseer-go/linkTrace"
+	"github.com/farseer-go/fs/trace"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 	"strconv"
@@ -24,6 +25,7 @@ type IndexSet[Table any] struct {
 	ShardsCount     int
 	ReplicasCount   int
 	RefreshInterval int
+	traceManager    trace.IManager
 }
 type mi map[string]any
 
@@ -34,6 +36,7 @@ func (indexSet *IndexSet[Table]) Init(esContext *internalContext, indexName stri
 	indexSet.ReplicasCount = replicasCount
 	indexSet.RefreshInterval = refreshInterval
 	indexSet.SetIndexName(indexName, indexAliases)
+	indexSet.traceManager = container.Resolve[trace.IManager]()
 }
 
 // SetIndexName 设置索引名称
@@ -81,7 +84,7 @@ func (indexSet *IndexSet[Table]) WhenNotExistsAddIndex(po Table) {
 // CreateIndex 创建索引
 func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("CreateIndex", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("CreateIndex", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	//表结构处理
@@ -155,7 +158,7 @@ func (indexSet *IndexSet[Table]) Desc(field string) *IndexSet[Table] {
 // Delete 删除指定Id数据
 func (indexSet *IndexSet[Table]) Delete(id string) error {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("Delete", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("Delete", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	_, err = indexSet.getClient().Delete().Index(indexSet.indexName).Id(id).Do(fs.Context)
@@ -165,7 +168,7 @@ func (indexSet *IndexSet[Table]) Delete(id string) error {
 // DeleteIndex 删除指定index索引数据
 func (indexSet *IndexSet[Table]) DeleteIndex(indices ...string) error {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("DeleteIndex", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("DeleteIndex", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	_, err = indexSet.getClient().DeleteIndex(indices...).Do(fs.Context)
@@ -214,7 +217,7 @@ func (indexSet *IndexSet[Table]) WhereRange(field string, startValue any, endVal
 // Insert 插入数据
 func (indexSet *IndexSet[Table]) Insert(po Table) error {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("Insert", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("Insert", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	indexSet.WhenNotExistsAddIndex(po)
@@ -235,7 +238,7 @@ func (indexSet *IndexSet[Table]) Insert(po Table) error {
 // InsertArray 数组的形式插入
 func (indexSet *IndexSet[Table]) InsertArray(array []Table) error {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("InsertArray", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("InsertArray", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	if len(array) > 0 {
@@ -271,7 +274,7 @@ func (indexSet *IndexSet[Table]) InsertList(list collections.List[Table]) error 
 // ToList 转换List集合
 func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("ToList", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("ToList", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	boolQuery := elastic.NewBoolQuery().Must()
@@ -294,7 +297,7 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 // ToPageList 转成分页集合
 func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collections.PageList[Table] {
 	var err error
-	traceDetailEs := linkTrace.TraceElasticsearch("ToPageList", indexSet.indexName, indexSet.aliasesName)
+	traceDetailEs := indexSet.traceManager.TraceElasticsearch("ToPageList", indexSet.indexName, indexSet.aliasesName)
 	defer func() { traceDetailEs.End(err) }()
 
 	boolQuery := elastic.NewBoolQuery().Must()
