@@ -26,7 +26,7 @@ type UserPO struct {
 
 func TestNewContext(t *testing.T) {
 	// 设置配置默认值，模拟配置文件
-	configure.SetDefault("ElasticSearch.test", "Server=http://es:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	configure.SetDefault("ElasticSearch.test", "ConsumerServer=http://es:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 	context := elasticSearch.NewContext[TestEsContext]("test")
 	context.User.SetIndexName("user_index_01", "user_index_alis_01")
 	assert.Equal(t, "user_index_01", context.User.GetIndexName())
@@ -50,7 +50,7 @@ func TestInitContext(t *testing.T) {
 	fmt.Printf("%d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second)
 	flog.Println(year, month, day, hour, minute, second)
 	// 设置配置默认值，模拟配置文件
-	configure.SetDefault("ElasticSearch.test", "Server=http://es:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
+	configure.SetDefault("ElasticSearch.test", "ConsumerServer=http://es:9200,Username=es,Password=123456,ReplicasCount=1,ShardsCount=1,RefreshInterval=5,IndexFormat=yyyy_MM")
 
 	var context TestEsContext
 	elasticSearch.InitContext(&context, "test")
