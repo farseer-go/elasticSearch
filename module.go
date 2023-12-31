@@ -17,7 +17,7 @@ func (module Module) Initialize() {
 	for name, val := range nodes {
 		configString := val.(string)
 		if configString == "" {
-			panic("[farseer.yaml]ElasticSearch." + name + "，没有正确配置")
+			panic("[farseer.yaml]ElasticSearch." + name + "，配置不正确")
 		}
 		RegisterInternalContext(name, configString)
 	}
