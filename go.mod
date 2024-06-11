@@ -1,6 +1,8 @@
 module github.com/farseer-go/elasticSearch
 
-go 1.19
+go 1.21
+
+toolchain go1.22.0
 
 require (
 	github.com/farseer-go/collections v0.13.0
@@ -18,3 +20,5 @@ require (
 	github.com/timandy/routine v1.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+exclude github.com/timandy/routine v1.1.3
