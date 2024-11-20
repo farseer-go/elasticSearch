@@ -1,16 +1,17 @@
 package elasticSearch
 
 import (
-	"encoding/json"
+	"reflect"
+	"strconv"
+	"strings"
+
+	"github.com/bytedance/sonic"
 	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs"
 	"github.com/farseer-go/fs/container"
 	"github.com/farseer-go/fs/flog"
 	"github.com/farseer-go/fs/trace"
 	"github.com/olivere/elastic/v7"
-	"reflect"
-	"strconv"
-	"strings"
 )
 
 // IndexSet 表操作
@@ -124,7 +125,7 @@ func (indexSet *IndexSet[Table]) CreateIndex(po Table) {
 			"properties": miTable,
 		},
 	}
-	marshal, _ := json.Marshal(mapping)
+	marshal, _ := sonic.Marshal(mapping)
 	//flog.Println("json:", string(marshal))
 	_, err = indexSet.getClient().CreateIndex(indexSet.indexName).BodyString(string(marshal)).Do(fs.Context)
 	flog.Println("createindex:", err)
@@ -287,7 +288,7 @@ func (indexSet *IndexSet[Table]) ToList() collections.List[Table] {
 	var lst []Table
 	for _, hit := range hitArray {
 		var entity Table
-		_ = json.Unmarshal(hit.Source, &entity)
+		_ = sonic.Unmarshal(hit.Source, &entity)
 		//添加元素
 		lst = append(lst, entity)
 	}
@@ -314,7 +315,7 @@ func (indexSet *IndexSet[Table]) ToPageList(pageSize int, pageIndex int) collect
 
 	for _, hit := range resp.Hits.Hits {
 		var entity Table
-		_ = json.Unmarshal(hit.Source, &entity)
+		_ = sonic.Unmarshal(hit.Source, &entity)
 		lst.Add(entity)
 	}
 	return collections.NewPageList[Table](lst, resp.Hits.TotalHits.Value)
