@@ -19,7 +19,8 @@ type internalContext struct {
 
 // Original 返回原生的对象
 func (receiver *internalContext) Original() *elastic.Client {
-	return open(receiver.esConfig)
+	client, _ := open(receiver.esConfig)
+	return client
 }
 
 // RegisterInternalContext 注册内部上下文

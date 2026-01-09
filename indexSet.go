@@ -60,9 +60,8 @@ func (indexSet *IndexSet[Table]) data() *elastic.SearchService {
 // 初始化client
 func (indexSet *IndexSet[Table]) getClient() *elastic.Client {
 	if indexSet.client == nil {
-		es := open(indexSet.esContext.esConfig)
-		indexSet.client = es
-		indexSet.searchService = es.Search().Index(indexSet.aliasesName)
+		indexSet.client, indexSet.err = open(indexSet.esContext.esConfig)
+		indexSet.searchService = indexSet.client.Search().Index(indexSet.aliasesName)
 	}
 	return indexSet.client
 }
