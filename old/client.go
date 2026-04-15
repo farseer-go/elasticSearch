@@ -2,6 +2,7 @@ package old
 
 import (
 	"context"
+
 	"github.com/farseer-go/elasticSearch"
 	"github.com/farseer-go/fs/configure"
 	"github.com/olivere/elastic/v7"
@@ -23,7 +24,7 @@ var ctx = context.Background()
 func NewClient(esName string) *Client {
 	configString := configure.GetString("" + esName)
 	if configString == "" {
-		panic("[farseer.yaml]找不到相应的配置：" + esName)
+		panic("[config.yaml]找不到相应的配置：" + esName)
 	}
 	elasticConfig := configure.ParseString[elasticSearch.EsConfig](configString)
 	client, err := elastic.NewClient(

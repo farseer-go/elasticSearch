@@ -1,13 +1,14 @@
 package elasticSearch
 
 import (
-	"github.com/farseer-go/fs/container"
-	"github.com/farseer-go/fs/types"
 	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/farseer-go/fs/container"
+	"github.com/farseer-go/fs/types"
 )
 
 // IEsContext ES上下文
@@ -33,7 +34,7 @@ func InitContext[TEsContext IEsContext](esContext *TEsContext, esName string) {
 	}
 	context := container.Resolve[IInternalContext](esName)
 	if context == nil {
-		log.Panicf("初始化TEsContext失败，请确认./farseer.yaml配置文件中的ElasticSearch.%s是否正确", esName)
+		log.Panicf("初始化TEsContext失败，请确认./config.yaml配置文件中的ElasticSearch.%s是否正确", esName)
 	}
 
 	internalContextIns := context.(*internalContext)

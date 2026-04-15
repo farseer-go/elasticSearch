@@ -27,7 +27,7 @@ func (receiver *internalContext) Original() *elastic.Client {
 func RegisterInternalContext(name string, configString string) {
 	config := configure.ParseString[EsConfig](configString)
 	if config.Server == "" {
-		panic("[farseer.yaml]ElasticSearch." + name + ".Server，配置不正确")
+		panic("[config.yaml]ElasticSearch." + name + ".Server，配置不正确")
 	}
 	if config.RefreshInterval == 0 {
 		config.RefreshInterval = 1
