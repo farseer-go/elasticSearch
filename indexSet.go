@@ -7,7 +7,6 @@ import (
 
 	"github.com/farseer-go/collections"
 	"github.com/farseer-go/fs"
-	"github.com/farseer-go/fs/container"
 	"github.com/farseer-go/fs/flog"
 	"github.com/farseer-go/fs/snc"
 	"github.com/farseer-go/fs/trace"
@@ -37,7 +36,7 @@ func (indexSet *IndexSet[Table]) Init(esContext *internalContext, indexName stri
 	indexSet.ReplicasCount = replicasCount
 	indexSet.RefreshInterval = refreshInterval
 	indexSet.SetIndexName(indexName, indexAliases)
-	indexSet.traceManager = container.Resolve[trace.IManager]()
+	indexSet.traceManager = trace.Manager()
 }
 
 // SetIndexName 设置索引名称
